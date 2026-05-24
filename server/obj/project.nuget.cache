@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "JMpTdKZ3ibA=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\user\\Desktop\\PortfolioProjects\\portfoliohub\\server\\server.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.0-preview.3.25172.1\\microsoft.aspnetcore.openapi.10.0.0-preview.3.25172.1.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.openapi\\2.0.0-preview.11\\microsoft.openapi.2.0.0-preview.11.nupkg.sha512"
+  ],
+  "logs": []
+}
