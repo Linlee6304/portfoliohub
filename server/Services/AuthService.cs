@@ -13,16 +13,81 @@ namespace PortfolioHub.Server.Services
     {
         private readonly IAuthReopnsitory _authRepository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly AppDbContext _context;
-        public AuthService(IAuthReopnsitory authRepository, UserManager<ApplicationUser> userManager, AppDbContext context)
+        public AuthService(IAuthReopnsitory authRepository, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context)
         {
             _authRepository = authRepository;
             _userManager = userManager;
+            _roleManager = roleManager;
             _context = context;
         }
-        public async Task<ResponseAuthDto> Login(RequestLoginRegisterDto request)
+        public async Task<ResponseAuthInfoDto> Login(RequestLoginRegisterDto request)
         {
-            throw new NotImplementedException();
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                return new ResponseAuthInfoDto
+                {
+                    Message = "帳號不存在"
+                };
+            }
+            var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+
+            if (!passwordValid)
+            {
+                return new ResponseAuthInfoDto
+                {
+                    Message = "密碼錯誤"
+                };
+            }
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles.Contains("Admin"))
+            {
+                return new ResponseAuthInfoDto
+                {
+                    Message = "管理員登入成功",
+                    Role = "Admin",
+                    DisplayName = user.UserName,
+                    AvatarUrl = null//管理員沒有頭像，未來可以考慮增加管理員頭像，目前我就直接給null
+                };
+            }
+            if (roles.Contains("Creator"))
+            {
+                var profile = await _context.CreatorProfiles
+                    .FirstOrDefaultAsync(p => p.IdentityUserId == user.Id);
+
+                if (profile == null)
+                {
+                    return new ResponseAuthInfoDto
+                    {
+                        Message = "創作者資料不存在，請聯繫管理員",
+                        Role = "Creator"
+                    };
+                }
+
+                return new ResponseAuthInfoDto
+                {
+                    Message = "創作者登入成功",
+                    Role = "Creator",
+                    DisplayName = profile.DisplayName,
+                    AvatarUrl = string.IsNullOrWhiteSpace(profile.AvatarUrl)
+                        ? "xxx" // 預設頭像
+                        : profile.AvatarUrl
+                };
+            }
+            if (roles.Count == 0)
+            {
+                return new ResponseAuthInfoDto
+                {
+                    Message = "此帳號未分配角色，請聯繫管理員"
+                };
+            }
+            return new ResponseAuthInfoDto
+            {
+                Message = "創作者登入成功",
+                Role = "Creator"
+            };
         }
 
         public async Task<ResponseAuthDto> Register(RequestLoginRegisterDto request)
@@ -90,6 +155,19 @@ namespace PortfolioHub.Server.Services
                         Message = "註冊失敗，請稍後再試"
                     };
                 }
+                var roleResult = await _userManager.AddToRoleAsync(
+                    user,
+                    "Creator");//預設註冊的帳號都是創作者，未來可以考慮增加管理員帳號註冊，目前我就直接對資料庫創建管理者帳號
+
+                if (!roleResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+
+                    return new ResponseAuthDto
+                    {
+                        Message = "角色指派失敗"
+                    };
+                }
                 var profile = new CreatorProfiles
                 {
                     IdentityUserId = user.Id,
@@ -124,9 +202,14 @@ namespace PortfolioHub.Server.Services
             }
             #endregion
         }
-
-        public async Task<ResponseAuthDto> UpdateAccount(RequestAuthDto request)
+        public async Task<ResponseAuthDto> GetAccountByEmail(string email)//用註冊信箱查詢帳號
         {
+            throw new NotImplementedException();
+        }
+
+        public async Task<ResponseAuthDto> UpdateAccount(RequestAuthDto request)//更新帳號資料
+        {
+            //邏輯梳理:先查詢
             throw new NotImplementedException();
         }
     }

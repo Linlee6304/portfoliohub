@@ -8,7 +8,10 @@ namespace PortfolioHub.Server.Services
     public interface IAuthService
     {
         Task<ResponseAuthDto> Register(RequestLoginRegisterDto request);//註冊
-        Task<ResponseAuthDto> Login(RequestLoginRegisterDto request);//登入
-        Task<ResponseAuthDto> UpdateAccount(RequestAuthDto request);//修改帳號
+        Task<ResponseAuthInfoDto> Login(RequestLoginRegisterDto request);//登入
+        Task<ResponseAuthDto> GetAccountByEmail(string email);//用註冊信箱查詢帳號
+        Task<ResponseAuthDto> UpdateAccount(RequestAuthDto request);//更新帳號
+
+
     }
 }

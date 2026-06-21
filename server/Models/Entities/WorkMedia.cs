@@ -8,4 +8,5 @@ public class WorkMedia//作品媒體表
     public string MediaUrl { get; set; } = string.Empty;//媒體URL
     public int SortOrder { get; set; } //排序順序
     public DateTime CreatedAt { get; set; } //建立時間
+    public Works Work { get; set; } = null!;
 }

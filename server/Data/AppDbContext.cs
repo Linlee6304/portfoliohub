@@ -24,8 +24,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<CreatorProfiles>()
-    .HasKey(x => x.CreatorId);
+            .HasKey(x => x.CreatorId);
 
         modelBuilder.Entity<Works>()
             .HasKey(x => x.WorkId);
@@ -36,34 +37,45 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<WorkMedia>()
             .HasKey(x => x.MediaId);
 
-        modelBuilder.Entity<WorksCreators>()//這是WorksCreators的複合主鍵
-        .HasKey(x => new
-        {
-            x.WorkId,
-            x.CreatorId
-        });
+        modelBuilder.Entity<WorksCreators>()
+            .HasKey(x => new
+            {
+                x.WorkId,
+                x.CreatorId
+            });
 
-        modelBuilder.Entity<WorkFeatures>()//這是WorkFeatures的外鍵關聯
-            .HasOne<Works>()
-            .WithMany()
+
+        modelBuilder.Entity<CreatorProfiles>()
+        .HasOne(cp => cp.IdentityUser)
+        .WithOne(u => u.CreatorProfile)
+        .HasForeignKey<CreatorProfiles>(cp => cp.IdentityUserId);
+
+
+        // Works 1 對多 WorkFeatures
+        modelBuilder.Entity<WorkFeatures>()
+            .HasOne(x => x.Work)
+            .WithMany(x => x.WorkFeatures)
             .HasForeignKey(x => x.WorkId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<WorkMedia>()//這是WorkMedia的外鍵關聯
-            .HasOne<Works>()
-            .WithMany()
+        // Works 1 對多 WorkMedia
+        modelBuilder.Entity<WorkMedia>()
+            .HasOne(x => x.Work)
+            .WithMany(x => x.WorkMedia)
             .HasForeignKey(x => x.WorkId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<WorksCreators>()//這是WorksCreators的外鍵關聯
-            .HasOne<Works>()
-            .WithMany()
+        // Works 1 對多 WorksCreators
+        modelBuilder.Entity<WorksCreators>()
+            .HasOne(x => x.Work)
+            .WithMany(x => x.WorksCreators)
             .HasForeignKey(x => x.WorkId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<WorksCreators>()//這是WorksCreators的外鍵關聯
-            .HasOne<CreatorProfiles>()
-            .WithMany()
+        // CreatorProfiles 1 對多 WorksCreators
+        modelBuilder.Entity<WorksCreators>()
+            .HasOne(x => x.CreatorProfile)
+            .WithMany(x => x.WorksCreators)
             .HasForeignKey(x => x.CreatorId)
             .OnDelete(DeleteBehavior.Cascade);
     }

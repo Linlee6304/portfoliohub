@@ -12,4 +12,13 @@ public class Works//作品主表
     public DateTime UpdatedAt { get; set; } //最後更新
     public int WorkType { get; set; } //作品類型 一般/接案/委託
 
+    public ICollection<WorkFeatures> WorkFeatures { get; set; }
+        = new List<WorkFeatures>();
+
+    public ICollection<WorkMedia> WorkMedia { get; set; }
+        = new List<WorkMedia>();
+
+    public ICollection<WorksCreators> WorksCreators { get; set; }
+        = new List<WorksCreators>();
+
 }
