@@ -49,7 +49,8 @@ namespace PortfolioHub.Server.Services
                     Message = "管理員登入成功",
                     Role = "Admin",
                     DisplayName = user.UserName,
-                    AvatarUrl = null//管理員沒有頭像，未來可以考慮增加管理員頭像，目前我就直接給null
+                    AvatarUrl = null,//管理員沒有頭像，未來可以考慮增加管理員頭像，目前我就直接給null
+                    IdentityUserId = user.Id
                 };
             }
             if (roles.Contains("Creator"))
@@ -71,6 +72,7 @@ namespace PortfolioHub.Server.Services
                     Message = "創作者登入成功",
                     Role = "Creator",
                     DisplayName = profile.DisplayName,
+                    IdentityUserId = user.Id,
                     AvatarUrl = string.IsNullOrWhiteSpace(profile.AvatarUrl)
                         ? "xxx" // 預設頭像
                         : profile.AvatarUrl
@@ -172,7 +174,7 @@ namespace PortfolioHub.Server.Services
                 {
                     IdentityUserId = user.Id,
                     DisplayName = request.DisplayName ?? string.Empty,
-                    ContactEmail = request.ContactEmail,
+                    ContactEmail = request.Email,
                     ContactPhone = request.ContactPhone,
                     Bio = string.Empty,
                     AvatarUrl = null,
@@ -202,15 +204,150 @@ namespace PortfolioHub.Server.Services
             }
             #endregion
         }
-        public async Task<ResponseAuthDto> GetAccountByEmail(string email)//用註冊信箱查詢帳號
+        public async Task<ResponseGetAccountDto> GetAccountByEmail(string email)//用註冊信箱查詢帳號
         {
-            throw new NotImplementedException();
+            await _authRepository.IsEmailExists(email);
+            var result = await _authRepository.GetAccountByEmail(email);
+            if (result == null)
+            {
+                return new ResponseGetAccountDto
+                {
+                    Message = "查無此帳號"
+                };
+            }
+
+            return result;
         }
 
-        public async Task<ResponseAuthDto> UpdateAccount(RequestAuthDto request)//更新帳號資料
+        public async Task<ResponseGetAccountDto> UpdateAccount(RequestAuthDto request)
         {
-            //邏輯梳理:先查詢
-            throw new NotImplementedException();
+            var isEmailExists =
+                await _authRepository.IsEmailExists(request.Email);
+
+            var isIdentityUserIdExists =
+                await _authRepository.IsIdentityUserIdExists(
+                    request.IdentityUserId);
+
+            if (!isEmailExists)
+            {
+                return new ResponseGetAccountDto
+                {
+                    Message = "查無此帳號",
+                    IsEmailExists = false
+                };
+            }
+
+            if (!isIdentityUserIdExists)
+            {
+                return new ResponseGetAccountDto
+                {
+                    Message = "查無此帳號",
+                    IsIdentityUserIdExists = false
+                };
+            }
+
+            var user = await _userManager.FindByIdAsync(
+                request.IdentityUserId);
+
+            if (user == null)
+            {
+                return new ResponseGetAccountDto
+                {
+                    Message = "登入帳號不存在",
+                    IsIdentityUserIdExists = false
+                };
+            }
+
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var emailResult =
+                    await _userManager.SetEmailAsync(
+                        user,
+                        request.Email);
+
+                if (!emailResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+
+                    return new ResponseGetAccountDto
+                    {
+                        Message = "更新登入信箱失敗"
+                    };
+                }
+
+                var userNameResult =
+                    await _userManager.SetUserNameAsync(
+                        user,
+                        request.Email);
+
+                if (!userNameResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+
+                    return new ResponseGetAccountDto
+                    {
+                        Message = "更新登入帳號失敗"
+                    };
+                }
+
+                var profile =
+                    await _context.CreatorProfiles
+                        .FirstOrDefaultAsync(
+                            p => p.IdentityUserId ==
+                                 request.IdentityUserId);
+
+                if (profile == null)
+                {
+                    await transaction.RollbackAsync();
+
+                    return new ResponseGetAccountDto
+                    {
+                        Message = "創作者資料不存在",
+                        IsIdentityUserIdExists = false
+                    };
+                }
+
+                profile.ContactEmail = request.Email;
+                profile.DisplayName = request.DisplayName;
+                profile.ContactPhone = request.ContactPhone;
+                profile.Bio = request.Bio;
+                profile.AvatarUrl = request.AvatarUrl;
+                if (request.WorkStatus.HasValue)
+                {
+                    profile.WorkStatus = request.WorkStatus.Value;
+                }
+                profile.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return new ResponseGetAccountDto
+                {
+                    Message = "帳號資料更新成功",
+                    IdentityUserId = user.Id,
+                    Email = user.Email,
+                    ContactEmail = profile.ContactEmail,
+                    DisplayName = profile.DisplayName,
+                    ContactPhone = profile.ContactPhone,
+                    Bio = profile.Bio,
+                    AvatarUrl = profile.AvatarUrl,
+                    WorkStatus = profile.WorkStatus,
+                    IsEmailExists = true,
+                    IsIdentityUserIdExists = true
+                };
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+
+                return new ResponseGetAccountDto
+                {
+                    Message = "更新帳號資料失敗"
+                };
+            }
         }
     }
 }

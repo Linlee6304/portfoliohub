@@ -27,11 +27,11 @@ namespace PortfolioHub.Server.Repositories
                 .Where(x => x.IdentityUser.Email == email)
                 .Select(x => new ResponseGetAccountDto
                 {
-                    DisplayName = x.DisplayName,
-                    ContactEmail = x.ContactEmail,
-                    ContactPhone = x.ContactPhone,
-                    AvatarUrl = x.AvatarUrl,
-                    Bio = x.Bio
+                    DisplayName = x.DisplayName,//使用者名稱
+                    ContactEmail = x.ContactEmail,//使用者信箱
+                    ContactPhone = x.ContactPhone,//使用者電話
+                    AvatarUrl = x.AvatarUrl,//使用者頭像
+                    Bio = x.Bio//使用者簡介
                 })
                 .FirstOrDefaultAsync();
             return result;
@@ -40,6 +40,23 @@ namespace PortfolioHub.Server.Repositories
         public async Task<bool> IsEmailExists(string email)
         {
             return await _context.Users.AnyAsync(u => u.Email == email);
+        }
+        //檢查identityUserId是否存在於CreatorProfiles中
+        public async Task<bool> IsIdentityUserIdExists(string identityUserId)
+        {
+            return await _context.CreatorProfiles.AnyAsync(p => p.IdentityUserId == identityUserId);
+        }
+        public async Task<CreatorProfiles?>
+    GetCreatorProfileByIdentityUserId(string identityUserId)
+        {
+            return await _context.CreatorProfiles
+                .FirstOrDefaultAsync(
+                    p => p.IdentityUserId == identityUserId);
+        }
+
+        public async Task SaveChangesAsync()
+        {
+            await _context.SaveChangesAsync();
         }
     }
 }

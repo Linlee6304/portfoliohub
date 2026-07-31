@@ -7,38 +7,46 @@ namespace PortfolioHub.Server.DTOs
         public string Password { get; set; }//密碼
         public string? ConfirmPassword { get; set; }//二次密碼驗證
         public string? DisplayName { get; set; }
-        public string? ContactEmail { get; set; }//聯絡Email
         public string? ContactPhone { get; set; }
     }
-    public class RequestAuthDto//修改帳號用DTO
+    public class RequestAuthDto
     {
+        public string IdentityUserId { get; set; } = null!;
 
-        public string Email { get; set; }
+        // 修改後的新登入信箱，同時也是公開聯絡信箱
+        public string Email { get; set; } = null!;
 
-        public string Password { get; set; }
-
-        public string? DisplayName { get; set; }//創作者名稱
-        public string? ContactEmail { get; set; }//聯絡Email
+        public string? DisplayName { get; set; }
         public string? ContactPhone { get; set; }
-
+        public string? AvatarUrl { get; set; }
+        public int? WorkStatus { get; set; }
+        public string? Bio { get; set; }
     }
     public class ResponseAuthDto//帳號相關回傳用DTO
     {
         public string Message { get; set; }
     }
-    public class ResponseAuthInfoDto : ResponseAuthDto//登入成功回傳用DTO
+    public class ResponseAuthInfoDto : ResponseAuthDto
     {
         public string? DisplayName { get; set; }
         public string? AvatarUrl { get; set; }
         public string? Role { get; set; }
+        public string? IdentityUserId { get; set; }
     }
-    public class ResponseGetAccountDto : ResponseAuthDto//信箱查詢回傳用DTO 專們回傳製作者自己原本資訊
+
+    public class ResponseGetAccountDto : ResponseAuthDto
     {
+        public string? IdentityUserId { get; set; }
+        public string? Email { get; set; }
+
         public string? DisplayName { get; set; }
         public string? ContactEmail { get; set; }
         public string? ContactPhone { get; set; }
-        public string? AvatarUrl { get; set; }//頭像URL
-        public int? WorkStatus { get; set; } //接案狀況 0不接案/1接案中/2可接案
+        public string? AvatarUrl { get; set; }
+        public int? WorkStatus { get; set; }
         public string? Bio { get; set; }
+
+        public bool? IsEmailExists { get; set; }
+        public bool? IsIdentityUserIdExists { get; set; }
     }
 }
