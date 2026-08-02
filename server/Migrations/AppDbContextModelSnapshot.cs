@@ -250,7 +250,7 @@ namespace server.Migrations
 
                     b.Property<string>("IdentityUserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -263,7 +263,10 @@ namespace server.Migrations
 
                     b.HasKey("CreatorId");
 
-                    b.ToTable("CreatorProfiles", (string)null);
+                    b.HasIndex("IdentityUserId")
+                        .IsUnique();
+
+                    b.ToTable("CreatorProfiles");
                 });
 
             modelBuilder.Entity("PortfolioHub.Server.Models.Entities.WorkFeatures", b =>
@@ -300,7 +303,7 @@ namespace server.Migrations
 
                     b.HasIndex("WorkId");
 
-                    b.ToTable("WorkFeatures", (string)null);
+                    b.ToTable("WorkFeatures");
                 });
 
             modelBuilder.Entity("PortfolioHub.Server.Models.Entities.WorkMedia", b =>
@@ -332,7 +335,7 @@ namespace server.Migrations
 
                     b.HasIndex("WorkId");
 
-                    b.ToTable("WorkMedia", (string)null);
+                    b.ToTable("WorkMedia");
                 });
 
             modelBuilder.Entity("PortfolioHub.Server.Models.Entities.Works", b =>
@@ -371,7 +374,7 @@ namespace server.Migrations
 
                     b.HasKey("WorkId");
 
-                    b.ToTable("Works", (string)null);
+                    b.ToTable("Works");
                 });
 
             modelBuilder.Entity("PortfolioHub.Server.Models.Entities.WorksCreators", b =>
@@ -393,7 +396,7 @@ namespace server.Migrations
 
                     b.HasIndex("CreatorId");
 
-                    b.ToTable("WorksCreators", (string)null);
+                    b.ToTable("WorksCreators");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -447,37 +450,75 @@ namespace server.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PortfolioHub.Server.Models.Entities.CreatorProfiles", b =>
+                {
+                    b.HasOne("PortfolioHub.Server.Models.Entities.ApplicationUser", "IdentityUser")
+                        .WithOne("CreatorProfile")
+                        .HasForeignKey("PortfolioHub.Server.Models.Entities.CreatorProfiles", "IdentityUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IdentityUser");
+                });
+
             modelBuilder.Entity("PortfolioHub.Server.Models.Entities.WorkFeatures", b =>
                 {
-                    b.HasOne("PortfolioHub.Server.Models.Entities.Works", null)
-                        .WithMany()
+                    b.HasOne("PortfolioHub.Server.Models.Entities.Works", "Work")
+                        .WithMany("WorkFeatures")
                         .HasForeignKey("WorkId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Work");
                 });
 
             modelBuilder.Entity("PortfolioHub.Server.Models.Entities.WorkMedia", b =>
                 {
-                    b.HasOne("PortfolioHub.Server.Models.Entities.Works", null)
-                        .WithMany()
+                    b.HasOne("PortfolioHub.Server.Models.Entities.Works", "Work")
+                        .WithMany("WorkMedia")
                         .HasForeignKey("WorkId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Work");
                 });
 
             modelBuilder.Entity("PortfolioHub.Server.Models.Entities.WorksCreators", b =>
                 {
-                    b.HasOne("PortfolioHub.Server.Models.Entities.CreatorProfiles", null)
-                        .WithMany()
+                    b.HasOne("PortfolioHub.Server.Models.Entities.CreatorProfiles", "CreatorProfile")
+                        .WithMany("WorksCreators")
                         .HasForeignKey("CreatorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PortfolioHub.Server.Models.Entities.Works", null)
-                        .WithMany()
+                    b.HasOne("PortfolioHub.Server.Models.Entities.Works", "Work")
+                        .WithMany("WorksCreators")
                         .HasForeignKey("WorkId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("CreatorProfile");
+
+                    b.Navigation("Work");
+                });
+
+            modelBuilder.Entity("PortfolioHub.Server.Models.Entities.ApplicationUser", b =>
+                {
+                    b.Navigation("CreatorProfile");
+                });
+
+            modelBuilder.Entity("PortfolioHub.Server.Models.Entities.CreatorProfiles", b =>
+                {
+                    b.Navigation("WorksCreators");
+                });
+
+            modelBuilder.Entity("PortfolioHub.Server.Models.Entities.Works", b =>
+                {
+                    b.Navigation("WorkFeatures");
+
+                    b.Navigation("WorkMedia");
+
+                    b.Navigation("WorksCreators");
                 });
 #pragma warning restore 612, 618
         }

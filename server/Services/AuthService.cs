@@ -15,12 +15,14 @@ namespace PortfolioHub.Server.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly AppDbContext _context;
-        public AuthService(IAuthReopnsitory authRepository, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context)
+        private readonly IJwtService _jwtService;
+        public AuthService(IAuthReopnsitory authRepository, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context, IJwtService jwtService)
         {
             _authRepository = authRepository;
             _userManager = userManager;
             _roleManager = roleManager;
             _context = context;
+            _jwtService = jwtService;
         }
         public async Task<ResponseAuthInfoDto> Login(RequestLoginRegisterDto request)
         {
@@ -42,6 +44,7 @@ namespace PortfolioHub.Server.Services
                 };
             }
             var roles = await _userManager.GetRolesAsync(user);
+            var token = _jwtService.GenerateToken(user, roles);
             if (roles.Contains("Admin"))
             {
                 return new ResponseAuthInfoDto
@@ -50,7 +53,9 @@ namespace PortfolioHub.Server.Services
                     Role = "Admin",
                     DisplayName = user.UserName,
                     AvatarUrl = null,//管理員沒有頭像，未來可以考慮增加管理員頭像，目前我就直接給null
-                    IdentityUserId = user.Id
+                    IdentityUserId = user.Id,
+                    Token = token,
+                    TokenExpiresAt = DateTime.UtcNow.AddHours(2)
                 };
             }
             if (roles.Contains("Creator"))
@@ -348,6 +353,91 @@ namespace PortfolioHub.Server.Services
                     Message = "更新帳號資料失敗"
                 };
             }
+        }
+        public async Task<ResponseChangePasswordDto> ChangePassword(
+    RequestChangePasswordDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.IdentityUserId))
+            {
+                return new ResponseChangePasswordDto
+                {
+                    Success = false,
+                    Message = "使用者識別碼不可為空"
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+            {
+                return new ResponseChangePasswordDto
+                {
+                    Success = false,
+                    Message = "請輸入目前密碼"
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
+            {
+                return new ResponseChangePasswordDto
+                {
+                    Success = false,
+                    Message = "請輸入新密碼"
+                };
+            }
+
+            if (request.NewPassword != request.ConfirmNewPassword)
+            {
+                return new ResponseChangePasswordDto
+                {
+                    Success = false,
+                    Message = "新密碼與確認密碼不一致"
+                };
+            }
+
+            if (request.CurrentPassword == request.NewPassword)
+            {
+                return new ResponseChangePasswordDto
+                {
+                    Success = false,
+                    Message = "新密碼不可與目前密碼相同"
+                };
+            }
+
+            var user = await _userManager.FindByIdAsync(
+                request.IdentityUserId);
+
+            if (user == null)
+            {
+                return new ResponseChangePasswordDto
+                {
+                    Success = false,
+                    Message = "登入帳號不存在"
+                };
+            }
+
+            var result = await _userManager.ChangePasswordAsync(
+                user,
+                request.CurrentPassword,
+                request.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors
+                    .Select(error => error.Description)
+                    .ToList();
+
+                return new ResponseChangePasswordDto
+                {
+                    Success = false,
+                    Message = errors.FirstOrDefault() ?? "密碼更新失敗",
+                    Errors = errors
+                };
+            }
+
+            return new ResponseChangePasswordDto
+            {
+                Success = true,
+                Message = "密碼更新成功"
+            };
         }
     }
 }

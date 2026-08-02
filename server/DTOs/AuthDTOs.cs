@@ -32,6 +32,10 @@ namespace PortfolioHub.Server.DTOs
         public string? AvatarUrl { get; set; }
         public string? Role { get; set; }
         public string? IdentityUserId { get; set; }
+        public string? Token { get; set; }
+        public DateTime? TokenExpiresAt { get; set; }
+        public string? Email { get; set; }
+        public int? WorkStatus { get; set; }
     }
 
     public class ResponseGetAccountDto : ResponseAuthDto
@@ -48,5 +52,23 @@ namespace PortfolioHub.Server.DTOs
 
         public bool? IsEmailExists { get; set; }
         public bool? IsIdentityUserIdExists { get; set; }
+    }
+    public class RequestChangePasswordDto
+    {
+        public string IdentityUserId { get; set; } = string.Empty;
+
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        public string NewPassword { get; set; } = string.Empty;
+
+        public string ConfirmNewPassword { get; set; } = string.Empty;
+    }
+    public class ResponseChangePasswordDto
+    {
+        public bool Success { get; set; }
+
+        public string Message { get; set; } = string.Empty;
+
+        public IEnumerable<string>? Errors { get; set; }
     }
 }

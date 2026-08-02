@@ -11,6 +11,7 @@ namespace PortfolioHub.Server.Services
         Task<ResponseAuthInfoDto> Login(RequestLoginRegisterDto request);//登入
         Task<ResponseGetAccountDto> GetAccountByEmail(string email);//用註冊信箱查詢帳號
         Task<ResponseGetAccountDto> UpdateAccount(RequestAuthDto request);//更新帳號
+        Task<ResponseChangePasswordDto> ChangePassword(RequestChangePasswordDto request);//修改密碼
 
 
     }
