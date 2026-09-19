@@ -1,0 +1,35 @@
+.site-footer {
+    padding: 32px 0;
+    color: #7a869d;
+    border-top: 1px solid var(--line);
+    background: #fff;
+}
+
+.footer-inner {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    font-size: 13px;
+}
+
+.footer-inner p {
+    margin: 0 auto 0 0;
+}
+
+.footer-brand {
+    color: var(--ink);
+    font-weight: 800;
+    font-size: 16px;
+}
+
+@media (max-width: 640px) {
+    .footer-inner {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .footer-inner p {
+        margin: 0;
+    }
+}

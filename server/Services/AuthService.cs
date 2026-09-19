@@ -1,443 +1,146 @@
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using PortfolioHub.Server.Data;
-using PortfolioHub.Server.Models;
 using PortfolioHub.Server.DTOs;
 using PortfolioHub.Server.Models.Entities;
 using PortfolioHub.Server.Repositories;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using System;
+namespace PortfolioHub.Server.Services;
 
-namespace PortfolioHub.Server.Services
+public class AuthService(IAuthReopnsitory authRepository, UserManager<ApplicationUser> userManager,
+    AppDbContext context, IJwtService jwtService) : IAuthService
 {
-    public class AuthService : IAuthService//帳號相關邏輯
+    public async Task<ResponseAuthInfoDto> Login(RequestLoginRegisterDto request)
     {
-        private readonly IAuthReopnsitory _authRepository;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly AppDbContext _context;
-        private readonly IJwtService _jwtService;
-        public AuthService(IAuthReopnsitory authRepository, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context, IJwtService jwtService)
+        var user = await userManager.FindByEmailAsync(request.Email.Trim());
+        if (user is null) return new() { Message = "帳號不存在" };
+        if (!await userManager.CheckPasswordAsync(user, request.Password))
+            return new() { Message = "密碼錯誤" };
+        var account = await GetCurrentUser(user.Id);
+        if (!account.Success) return new() { Message = account.Message };
+        var roles = await userManager.GetRolesAsync(user);
+        var token = jwtService.GenerateToken(user, roles);
+        return new()
         {
-            _authRepository = authRepository;
-            _userManager = userManager;
-            _roleManager = roleManager;
-            _context = context;
-            _jwtService = jwtService;
-        }
-        public async Task<ResponseAuthInfoDto> Login(RequestLoginRegisterDto request)
-        {
-            var user = await _userManager.FindByEmailAsync(request.Email);
-            if (user == null)
-            {
-                return new ResponseAuthInfoDto
-                {
-                    Message = "帳號不存在"
-                };
-            }
-            var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
-
-            if (!passwordValid)
-            {
-                return new ResponseAuthInfoDto
-                {
-                    Message = "密碼錯誤"
-                };
-            }
-            var roles = await _userManager.GetRolesAsync(user);
-            var token = _jwtService.GenerateToken(user, roles);
-            if (roles.Contains("Admin"))
-            {
-                return new ResponseAuthInfoDto
-                {
-                    Message = "管理員登入成功",
-                    Role = "Admin",
-                    DisplayName = user.UserName,
-                    AvatarUrl = null,//管理員沒有頭像，未來可以考慮增加管理員頭像，目前我就直接給null
-                    IdentityUserId = user.Id,
-                    Token = token,
-                    TokenExpiresAt = DateTime.UtcNow.AddHours(2)
-                };
-            }
-            if (roles.Contains("Creator"))
-            {
-                var profile = await _context.CreatorProfiles
-                    .FirstOrDefaultAsync(p => p.IdentityUserId == user.Id);
-
-                if (profile == null)
-                {
-                    return new ResponseAuthInfoDto
-                    {
-                        Message = "創作者資料不存在，請聯繫管理員",
-                        Role = "Creator"
-                    };
-                }
-
-                return new ResponseAuthInfoDto
-                {
-                    Message = "創作者登入成功",
-                    Role = "Creator",
-                    DisplayName = profile.DisplayName,
-                    IdentityUserId = user.Id,
-                    AvatarUrl = string.IsNullOrWhiteSpace(profile.AvatarUrl)
-                        ? "xxx" // 預設頭像
-                        : profile.AvatarUrl
-                };
-            }
-            if (roles.Count == 0)
-            {
-                return new ResponseAuthInfoDto
-                {
-                    Message = "此帳號未分配角色，請聯繫管理員"
-                };
-            }
-            return new ResponseAuthInfoDto
-            {
-                Message = "創作者登入成功",
-                Role = "Creator"
-            };
-        }
-
-        public async Task<ResponseAuthDto> Register(RequestLoginRegisterDto request)
-        {
-            #region 驗證註冊資料
-            var creator = await _authRepository.IsEmailExists(request.Email);
-
-            if (creator)
-            {
-                return new ResponseAuthDto
-                {
-                    Message = "此信箱已存在於會員資料中"
-                };
-            }
-            var identityuser = await _userManager.FindByEmailAsync(request.Email);
-            if (identityuser != null)
-            {
-                return new ResponseAuthDto
-                {
-                    Message = "此信箱已註冊登入帳號"
-                };
-            }
-
-
-            if (request.Password != request.ConfirmPassword)
-            {
-                return new ResponseAuthDto
-                {
-                    Message = "帳號密碼請輸入一致"
-                };
-            }
-
-            if (request.Password.Length < 6)
-            {
-                return new ResponseAuthDto
-                {
-                    Message = "密碼長度至少6個字元"//我不做出過多密碼限制
-                };
-            }
-            #endregion
-            #region 開始註冊
-            using var transaction = await _context.Database.BeginTransactionAsync();
-
-            try
-            {
-                var user = new ApplicationUser
-                {
-                    UserName = request.Email,
-                    Email = request.Email
-                };
-
-                var result = await _userManager.CreateAsync(
-                    user,
-                    request.Password);
-                if (!result.Succeeded)
-                {
-                    await transaction.RollbackAsync();
-                    foreach (var error in result.Errors)
-                    {
-                        Console.WriteLine(error.Code);
-                        Console.WriteLine(error.Description);
-                    }
-                    return new ResponseAuthDto
-                    {
-                        Message = "註冊失敗，請稍後再試"
-                    };
-                }
-                var roleResult = await _userManager.AddToRoleAsync(
-                    user,
-                    "Creator");//預設註冊的帳號都是創作者，未來可以考慮增加管理員帳號註冊，目前我就直接對資料庫創建管理者帳號
-
-                if (!roleResult.Succeeded)
-                {
-                    await transaction.RollbackAsync();
-
-                    return new ResponseAuthDto
-                    {
-                        Message = "角色指派失敗"
-                    };
-                }
-                var profile = new CreatorProfiles
-                {
-                    IdentityUserId = user.Id,
-                    DisplayName = request.DisplayName ?? string.Empty,
-                    ContactEmail = request.Email,
-                    ContactPhone = request.ContactPhone,
-                    Bio = string.Empty,
-                    AvatarUrl = null,
-                    IsActive = true,
-                    WorkStatus = 0,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                await _authRepository.CreateCreatorProfile(profile);
-                await transaction.CommitAsync();
-
-
-                return new ResponseAuthDto
-                {
-                    Message = "註冊成功"
-                };
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-
-                return new ResponseAuthDto
-                {
-                    Message = "註冊失敗"
-                };
-            }
-            #endregion
-        }
-        public async Task<ResponseGetAccountDto> GetAccountByEmail(string email)//用註冊信箱查詢帳號
-        {
-            await _authRepository.IsEmailExists(email);
-            var result = await _authRepository.GetAccountByEmail(email);
-            if (result == null)
-            {
-                return new ResponseGetAccountDto
-                {
-                    Message = "查無此帳號"
-                };
-            }
-
-            return result;
-        }
-
-        public async Task<ResponseGetAccountDto> UpdateAccount(RequestAuthDto request)
-        {
-            var isEmailExists =
-                await _authRepository.IsEmailExists(request.Email);
-
-            var isIdentityUserIdExists =
-                await _authRepository.IsIdentityUserIdExists(
-                    request.IdentityUserId);
-
-            if (!isEmailExists)
-            {
-                return new ResponseGetAccountDto
-                {
-                    Message = "查無此帳號",
-                    IsEmailExists = false
-                };
-            }
-
-            if (!isIdentityUserIdExists)
-            {
-                return new ResponseGetAccountDto
-                {
-                    Message = "查無此帳號",
-                    IsIdentityUserIdExists = false
-                };
-            }
-
-            var user = await _userManager.FindByIdAsync(
-                request.IdentityUserId);
-
-            if (user == null)
-            {
-                return new ResponseGetAccountDto
-                {
-                    Message = "登入帳號不存在",
-                    IsIdentityUserIdExists = false
-                };
-            }
-
-            await using var transaction =
-                await _context.Database.BeginTransactionAsync();
-
-            try
-            {
-                var emailResult =
-                    await _userManager.SetEmailAsync(
-                        user,
-                        request.Email);
-
-                if (!emailResult.Succeeded)
-                {
-                    await transaction.RollbackAsync();
-
-                    return new ResponseGetAccountDto
-                    {
-                        Message = "更新登入信箱失敗"
-                    };
-                }
-
-                var userNameResult =
-                    await _userManager.SetUserNameAsync(
-                        user,
-                        request.Email);
-
-                if (!userNameResult.Succeeded)
-                {
-                    await transaction.RollbackAsync();
-
-                    return new ResponseGetAccountDto
-                    {
-                        Message = "更新登入帳號失敗"
-                    };
-                }
-
-                var profile =
-                    await _context.CreatorProfiles
-                        .FirstOrDefaultAsync(
-                            p => p.IdentityUserId ==
-                                 request.IdentityUserId);
-
-                if (profile == null)
-                {
-                    await transaction.RollbackAsync();
-
-                    return new ResponseGetAccountDto
-                    {
-                        Message = "創作者資料不存在",
-                        IsIdentityUserIdExists = false
-                    };
-                }
-
-                profile.ContactEmail = request.Email;
-                profile.DisplayName = request.DisplayName;
-                profile.ContactPhone = request.ContactPhone;
-                profile.Bio = request.Bio;
-                profile.AvatarUrl = request.AvatarUrl;
-                if (request.WorkStatus.HasValue)
-                {
-                    profile.WorkStatus = request.WorkStatus.Value;
-                }
-                profile.UpdatedAt = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return new ResponseGetAccountDto
-                {
-                    Message = "帳號資料更新成功",
-                    IdentityUserId = user.Id,
-                    Email = user.Email,
-                    ContactEmail = profile.ContactEmail,
-                    DisplayName = profile.DisplayName,
-                    ContactPhone = profile.ContactPhone,
-                    Bio = profile.Bio,
-                    AvatarUrl = profile.AvatarUrl,
-                    WorkStatus = profile.WorkStatus,
-                    IsEmailExists = true,
-                    IsIdentityUserIdExists = true
-                };
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-
-                return new ResponseGetAccountDto
-                {
-                    Message = "更新帳號資料失敗"
-                };
-            }
-        }
-        public async Task<ResponseChangePasswordDto> ChangePassword(
-    RequestChangePasswordDto request)
-        {
-            if (string.IsNullOrWhiteSpace(request.IdentityUserId))
-            {
-                return new ResponseChangePasswordDto
-                {
-                    Success = false,
-                    Message = "使用者識別碼不可為空"
-                };
-            }
-
-            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
-            {
-                return new ResponseChangePasswordDto
-                {
-                    Success = false,
-                    Message = "請輸入目前密碼"
-                };
-            }
-
-            if (string.IsNullOrWhiteSpace(request.NewPassword))
-            {
-                return new ResponseChangePasswordDto
-                {
-                    Success = false,
-                    Message = "請輸入新密碼"
-                };
-            }
-
-            if (request.NewPassword != request.ConfirmNewPassword)
-            {
-                return new ResponseChangePasswordDto
-                {
-                    Success = false,
-                    Message = "新密碼與確認密碼不一致"
-                };
-            }
-
-            if (request.CurrentPassword == request.NewPassword)
-            {
-                return new ResponseChangePasswordDto
-                {
-                    Success = false,
-                    Message = "新密碼不可與目前密碼相同"
-                };
-            }
-
-            var user = await _userManager.FindByIdAsync(
-                request.IdentityUserId);
-
-            if (user == null)
-            {
-                return new ResponseChangePasswordDto
-                {
-                    Success = false,
-                    Message = "登入帳號不存在"
-                };
-            }
-
-            var result = await _userManager.ChangePasswordAsync(
-                user,
-                request.CurrentPassword,
-                request.NewPassword);
-
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors
-                    .Select(error => error.Description)
-                    .ToList();
-
-                return new ResponseChangePasswordDto
-                {
-                    Success = false,
-                    Message = errors.FirstOrDefault() ?? "密碼更新失敗",
-                    Errors = errors
-                };
-            }
-
-            return new ResponseChangePasswordDto
-            {
-                Success = true,
-                Message = "密碼更新成功"
-            };
-        }
+            Success = true, Message = "登入成功", Role = account.Role,
+            DisplayName = account.DisplayName, AvatarUrl = account.AvatarUrl,
+            IdentityUserId = user.Id, Email = user.Email, WorkStatus = account.WorkStatus,
+            Token = token, TokenExpiresAt = new JwtSecurityTokenHandler().ReadJwtToken(token).ValidTo
+        };
     }
+
+    public async Task<ResponseAuthDto> Register(RequestLoginRegisterDto request)
+    {
+        if (request.Password != request.ConfirmPassword) return new() { Message = "兩次輸入的密碼不一致" };
+        if (request.Password.Length < 6) return new() { Message = "密碼長度至少 6 個字元" };
+        var email = request.Email.Trim();
+        if (await userManager.FindByEmailAsync(email) is not null) return new() { Message = "此信箱已註冊" };
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        var user = new ApplicationUser { UserName = email, Email = email };
+        var create = await userManager.CreateAsync(user, request.Password);
+        if (!create.Succeeded) return new() { Message = DescribeErrors(create) };
+        var role = await userManager.AddToRoleAsync(user, "Creator");
+        if (!role.Succeeded) return new() { Message = "無法建立創作者帳號，請稍後再試" };
+        await authRepository.CreateCreatorProfile(new CreatorProfiles
+        {
+            IdentityUserId = user.Id,
+            DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? email : request.DisplayName.Trim(),
+            ContactEmail = email, ContactPhone = request.ContactPhone?.Trim(),
+            IsActive = true, WorkStatus = 0, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        });
+        await transaction.CommitAsync();
+        return new() { Success = true, Message = "註冊成功，請登入" };
+    }
+
+    public async Task<ResponseGetAccountDto> GetCurrentUser(string userId)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null) return new() { Message = "登入帳號不存在" };
+        var roles = await userManager.GetRolesAsync(user);
+        if (roles.Contains("Admin"))
+            return new()
+            {
+                Success = true, Message = "查詢成功", IdentityUserId = user.Id,
+                Email = user.Email, ContactEmail = user.Email, DisplayName = user.UserName, Role = "Admin"
+            };
+        if (!roles.Contains("Creator")) return new() { Message = "此帳號未分配角色，請聯繫管理員" };
+        var profile = await context.CreatorProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.IdentityUserId == userId);
+        if (profile is null || !profile.IsActive) return new() { Message = "創作者資料不存在或已停用，請聯繫管理員" };
+        return new()
+        {
+            Success = true, Message = "查詢成功", IdentityUserId = user.Id,
+            Email = user.Email, ContactEmail = profile.ContactEmail,
+            DisplayName = profile.DisplayName, ContactPhone = profile.ContactPhone,
+            AvatarUrl = profile.AvatarUrl, WorkStatus = profile.WorkStatus,
+            Bio = profile.Bio, Role = "Creator", IsEmailExists = true, IsIdentityUserIdExists = true
+        };
+    }
+
+    public async Task<ResponseGetAccountDto> GetAccountByEmail(string email)
+    {
+        var user = await userManager.FindByEmailAsync(email.Trim());
+        return user is null ? new() { Message = "查無此帳號" } : await GetCurrentUser(user.Id);
+    }
+
+    public async Task<ResponseGetAccountDto> UpdateAccount(RequestAuthDto request)
+    {
+        var user = await userManager.FindByIdAsync(request.IdentityUserId);
+        if (user is null) return new() { Message = "登入帳號不存在" };
+        var profile = await context.CreatorProfiles.FirstOrDefaultAsync(p => p.IdentityUserId == user.Id);
+        if (profile is null) return new() { Message = "此帳號沒有創作者基本資料" };
+        var email = request.Email.Trim();
+        var owner = await userManager.FindByEmailAsync(email);
+        if (owner is not null && owner.Id != user.Id) return new() { Message = "此信箱已由其他帳號使用" };
+        if (!string.IsNullOrWhiteSpace(request.AvatarUrl) &&
+            (!Uri.TryCreate(request.AvatarUrl, UriKind.Absolute, out var avatar) ||
+             (avatar.Scheme != Uri.UriSchemeHttps && avatar.Scheme != Uri.UriSchemeHttp)))
+            return new() { Message = "頭像請填入有效的圖片網址" };
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        // UpdateAsync validates/normalizes both fields without rotating the password stamp.
+        if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+            user.EmailConfirmed = false;
+        user.Email = email;
+        user.UserName = email;
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded) return new() { Message = DescribeErrors(updateResult) };
+        profile.ContactEmail = email;
+        profile.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? email : request.DisplayName.Trim();
+        profile.ContactPhone = request.ContactPhone?.Trim();
+        profile.AvatarUrl = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
+        profile.Bio = request.Bio?.Trim() ?? string.Empty;
+        if (request.WorkStatus.HasValue) profile.WorkStatus = request.WorkStatus.Value;
+        profile.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        var result = await GetCurrentUser(user.Id);
+        result.Message = "基本資料已儲存";
+        return result;
+    }
+
+    public async Task<ResponseChangePasswordDto> ChangePassword(RequestChangePasswordDto request)
+    {
+        if (request.NewPassword != request.ConfirmNewPassword) return new() { Message = "新密碼與確認密碼不一致" };
+        if (request.CurrentPassword == request.NewPassword) return new() { Message = "新密碼不可與目前密碼相同" };
+        var user = await userManager.FindByIdAsync(request.IdentityUserId);
+        if (user is null) return new() { Message = "登入帳號不存在" };
+        var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        // Identity rotates SecurityStamp, invalidating all JWTs issued before this change.
+        return result.Succeeded
+            ? new() { Success = true, Message = "密碼已更新，請重新登入" }
+            : new() { Message = DescribeErrors(result), Errors = result.Errors.Select(e => e.Code) };
+    }
+
+    private static string DescribeErrors(IdentityResult result) =>
+        string.Join("；", result.Errors.Select(e => e.Code switch
+        {
+            "PasswordMismatch" => "目前密碼不正確",
+            "PasswordTooShort" => "密碼長度至少 6 個字元",
+            "PasswordRequiresDigit" => "密碼需包含數字",
+            "PasswordRequiresLower" => "密碼需包含小寫英文字母",
+            "PasswordRequiresUpper" => "密碼需包含大寫英文字母",
+            "PasswordRequiresNonAlphanumeric" => "密碼需包含符號",
+            "DuplicateEmail" or "DuplicateUserName" => "此信箱已註冊",
+            "InvalidEmail" or "InvalidUserName" => "請填入有效的電子信箱",
+            _ => "資料無法儲存，請檢查輸入內容或稍後再試"
+        }));
 }

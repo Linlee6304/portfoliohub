@@ -1,111 +1,240 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap");
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  font-family:
+    "Noto Sans TC",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: #1e3d51;
+  background: #f5faff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
+  --sky: #168bc4;
+  --sky-hover: #0879ad;
+  --sky-pale: #eaf7ff;
+  --ink: #1e3d51;
+  --muted: #617e91;
+  --line: #dcebf4;
+  --danger: #b42332;
+  --success: #176b50;
+  color-scheme: light;
+  font-size: 15px;
+  line-height: 1.6;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  color: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+a {
+  color: var(--sky-hover);
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #62bce9;
+  outline-offset: 3px;
+}
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+h1 {
+  font-size: 28px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+h2 {
+  font-size: 21px;
+  font-weight: 600;
+}
+.icon {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border-radius: 8px;
+  padding: 8px 20px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.button-primary {
+  color: #fff;
+  background: var(--sky);
+  border-color: var(--sky);
+}
+.button-primary:hover {
+  background: var(--sky-hover);
+}
+.button-quiet {
+  background: #fff;
+  border-color: var(--line);
+  color: #315a73;
+}
+.button-quiet:hover {
+  background: var(--sky-pale);
+}
+.form-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 28px auto;
+  padding: 32px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px #216c9410;
+}
+.form-card h1 {
+  margin-bottom: 8px;
+}
+.form-intro {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 26px;
+}
+.field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 19px;
+}
+.field > span {
+  font-weight: 500;
+  font-size: 14px;
+}
+input,
+textarea,
+select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cbdfea;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 11px 13px;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #8299a9;
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: #f3f7fa;
+  color: var(--muted);
+}
+textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+.form-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+.form-submit {
+  width: 100%;
+  margin-top: 7px;
+}
+.form-footer {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  margin: 22px 0 0;
+}
+.form-footer a {
+  font-weight: 500;
+  margin-left: 5px;
+}
+.feedback {
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+}
+.feedback-error {
+  background: #fff0f2;
+  color: var(--danger);
+}
+.feedback-success {
+  background: #edf8f3;
+  color: var(--success);
+}
+.page-subtitle {
+  color: var(--muted);
+  margin-top: -12px;
+}
+.empty-page {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 54px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+.empty-page p {
+  margin: 0;
+}
+.empty-page .icon {
+  width: 28px;
+  height: 28px;
+  color: #8fc8e6;
+  margin-bottom: 15px;
+}
+@media (max-width: 600px) {
+  h1 {
+    font-size: 24px;
+  }
+  .form-card {
+    padding: 24px 18px;
+    margin: 8px auto;
+  }
+  input,
+  select,
+  textarea {
     font-size: 16px;
   }
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }

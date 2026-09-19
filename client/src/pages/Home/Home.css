@@ -1,0 +1,12 @@
+.home-canvas {
+  min-height: 420px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 4px 22px #43718b04;
+}
+@media (max-width: 600px) {
+  .home-canvas {
+    min-height: 330px;
+  }
+}

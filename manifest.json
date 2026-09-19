@@ -1,0 +1,181 @@
+{
+  "base_commit": "ec15edc1e6f1669f19a6cfa6336d7003d5e044e9",
+  "delete": [],
+  "files": [
+    {
+      "path": "client/index.html",
+      "action": "overwrite",
+      "sha256": "c1f339e8ff796bc313680e26659d68b07b2616388a6354607c8e64ae3eefebc6"
+    },
+    {
+      "path": "client/public/favicon.svg",
+      "action": "overwrite",
+      "sha256": "de4d588f31d5519c888e88d70f19bcceafb246409e66d75410614e2f70b90155"
+    },
+    {
+      "path": "client/src/App.css",
+      "action": "overwrite",
+      "sha256": "6b0178ab5d7f2517dcf84fa27841798cf9170e16f8ae939eb7c6641c95ad77f5"
+    },
+    {
+      "path": "client/src/App.tsx",
+      "action": "overwrite",
+      "sha256": "e4feabc20ef220d729e525d20c53bbb772a125743c2726ccf8cd4727cde4b199"
+    },
+    {
+      "path": "client/src/api/axios.ts",
+      "action": "overwrite",
+      "sha256": "f590b768cf869dd0abacd9f4ed6c2613d8617a2da4bab60529d29a94f7b381f7"
+    },
+    {
+      "path": "client/src/components/Header/Header.css",
+      "action": "overwrite",
+      "sha256": "615db03b093beb3f54d190d41bc51ddd2c317534ae5faf0985b0522d99661615"
+    },
+    {
+      "path": "client/src/components/Header/Header.tsx",
+      "action": "overwrite",
+      "sha256": "289762f1d1698e8ccec35a49e8eecd998c1d4d84c828f5082c7a4506369a7ffa"
+    },
+    {
+      "path": "client/src/components/ProtectedRoute/ProtectedRoute.tsx",
+      "action": "overwrite",
+      "sha256": "1eb360ccfd5369b432f2bd1f768b46e27ef7e57fa4aa94e1d281981ad24860f4"
+    },
+    {
+      "path": "client/src/index.css",
+      "action": "overwrite",
+      "sha256": "44f75e5c6a1c4184ebfab05cbc09a63c3607bb27a46f245e798e88068341c7be"
+    },
+    {
+      "path": "client/src/main.tsx",
+      "action": "overwrite",
+      "sha256": "038d05853917cbcf65b1723c9fa7d37e09710f8845771adee7cf6529d13fd473"
+    },
+    {
+      "path": "client/src/pages/Auth/Login.tsx",
+      "action": "overwrite",
+      "sha256": "e093582798462ae299fd39881fb62628d15a0dccae3632c17910b960550c556c"
+    },
+    {
+      "path": "client/src/pages/Auth/Register.tsx",
+      "action": "overwrite",
+      "sha256": "c3ed07b2217cd6d2605c7721bcf1fdb82898c9b2962b758420c5a00cb6f02ed1"
+    },
+    {
+      "path": "client/src/pages/Home/Home.css",
+      "action": "overwrite",
+      "sha256": "1981f24c2738fc027ba8536460e2de5311b35804ffc7fdbc30f86706076081bd"
+    },
+    {
+      "path": "client/src/pages/Home/Home.tsx",
+      "action": "overwrite",
+      "sha256": "125b94131ea61a9c48e7e567df7ce5bd8d63a6b17af1686821f48df9d5d03f25"
+    },
+    {
+      "path": "client/src/pages/Profile/Profile.tsx",
+      "action": "overwrite",
+      "sha256": "41a1ea49a541ade7f226568420f5d655c2a3702dd0d6d478c4cb398c4c0d562b"
+    },
+    {
+      "path": "client/src/pages/Works/WorkList.tsx",
+      "action": "overwrite",
+      "sha256": "1745e6b7dc52870b65ac4ca7f3dcc572111b6346501dc37d6ef790fd5791a205"
+    },
+    {
+      "path": "client/src/router/index.tsx",
+      "action": "overwrite",
+      "sha256": "e440467f4ca9bcc41ec4a8e9434c01cc755b8d3f47f8cf60bb44f1cc2475489a"
+    },
+    {
+      "path": "client/src/services/authService.ts",
+      "action": "overwrite",
+      "sha256": "08206994dc8ec070b1f20165a77a65289331c44e5e11afb7fe109c679d5658f8"
+    },
+    {
+      "path": "client/vite.config.ts",
+      "action": "overwrite",
+      "sha256": "d75c3198ee52a75f10ec973047ccc8ba02b7adb2c7f61af6c797f3c13ed17c78"
+    },
+    {
+      "path": "server/Controllers/AuthController.cs",
+      "action": "overwrite",
+      "sha256": "24c1aa6bbda769f936e78e325eaaca5b8f056f8df13704b3d40dfa9d62894c93"
+    },
+    {
+      "path": "server/DTOs/AuthDTOs.cs",
+      "action": "overwrite",
+      "sha256": "fe7db007cf70132b5a4f95882b5f3f9d1add5c1c8be3fd8e733d0cdcbdd546de"
+    },
+    {
+      "path": "server/Program.cs",
+      "action": "overwrite",
+      "sha256": "4898d82d527124a1404a097114448fea9f52131267571f74d0fd586ef050386e"
+    },
+    {
+      "path": "server/Services/AuthService.cs",
+      "action": "overwrite",
+      "sha256": "4ca5c6be43ef518c19df337eeeb949d3f5a6bd0e90b67d3f7d105ba5a415e29d"
+    },
+    {
+      "path": "server/Services/IAuthService.cs",
+      "action": "overwrite",
+      "sha256": "130dfb17d4271a48032891a2fa52b70c23d2fb1fae846b5af3c4093144248888"
+    },
+    {
+      "path": "server/Services/JwtService.cs",
+      "action": "overwrite",
+      "sha256": "137ac45ece57d404a50930c78c72f4389e9da79c1fdfeaa7e87a5363267aa4a7"
+    },
+    {
+      "path": "server/server.csproj",
+      "action": "overwrite",
+      "sha256": "4b385a2f6be42f83ec05d6631c655063e2f3ca238b75e565ab45e9dbb10cbe5e"
+    },
+    {
+      "path": ".gitignore",
+      "action": "add",
+      "sha256": "1ac4212d54018bdc6770c5a5bd7e7a9e1eb9821b514959e3cff62d654820da84"
+    },
+    {
+      "path": "client/.env.example",
+      "action": "add",
+      "sha256": "40c4853742070d8b8b84cc86e375ebbcc524184bd05205cabaea95f75c436bcf"
+    },
+    {
+      "path": "client/src/auth/AuthContext.ts",
+      "action": "add",
+      "sha256": "0b881335629f484e41e7515b875df9b808c75940170d9a1095c187f93835331a"
+    },
+    {
+      "path": "client/src/auth/AuthProvider.tsx",
+      "action": "add",
+      "sha256": "93aebc8dd4e61f46cc34bfd6eb9caddc5a5abeae4c85a428156cfd37f7ad0260"
+    },
+    {
+      "path": "client/src/components/Icon.tsx",
+      "action": "add",
+      "sha256": "64d33ef063aef9f3c90d4ec590fc4a629e68304cf71eb21886267ad0b0f05bb2"
+    },
+    {
+      "path": "client/src/pages/Auth/ChangePassword.tsx",
+      "action": "add",
+      "sha256": "c65ba9b1dcaa830f5320c9c540fcae9bd5cd8efc7e49800a0d72b7c2de37cba3"
+    },
+    {
+      "path": "server/Services/RevokedTokenService.cs",
+      "action": "add",
+      "sha256": "1c9cc77a1739a37b7bb1738bb83305536a5cfdb82da4254dc044d731928a0579"
+    },
+    {
+      "path": "tests/Server.Tests/AuthFlowTests.cs",
+      "action": "add",
+      "sha256": "2d044341c563e6c45a1116e9c105225f051514d538ac34ee4f197da058fc17a0"
+    },
+    {
+      "path": "tests/Server.Tests/Server.Tests.csproj",
+      "action": "add",
+      "sha256": "15db34258d3d7d6a7059fd5704e56f491a225166b8d002ca5c9bb2732ea53329"
+    }
+  ]
+}

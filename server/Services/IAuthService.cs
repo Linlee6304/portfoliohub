@@ -7,6 +7,7 @@ namespace PortfolioHub.Server.Services
 {
     public interface IAuthService
     {
+        Task<ResponseGetAccountDto> GetCurrentUser(string userId);
         Task<ResponseAuthDto> Register(RequestLoginRegisterDto request);//註冊
         Task<ResponseAuthInfoDto> Login(RequestLoginRegisterDto request);//登入
         Task<ResponseGetAccountDto> GetAccountByEmail(string email);//用註冊信箱查詢帳號

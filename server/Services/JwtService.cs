@@ -29,6 +29,7 @@ namespace PortfolioHub.Server.Services
             {
                 // 使用者識別
                 new(ClaimTypes.NameIdentifier, user.Id),
+                new("security_stamp", user.SecurityStamp ?? string.Empty),
 
                 // 登入信箱
                 new(ClaimTypes.Email, user.Email ?? string.Empty),

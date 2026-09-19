@@ -7,6 +7,8 @@ using PortfolioHub.Server.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,8 +20,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
-var jwtKey = builder.Configuration["Jwt:Key"]
-?? throw new InvalidOperationException("Jwt:Key 尚未設定");
 
 builder.Services
     .AddAuthentication(options =>
@@ -32,6 +32,8 @@ builder.Services
     })
     .AddJwtBearer(options =>
     {
+        var jwtKey = builder.Configuration["Jwt:Key"]
+            ?? throw new InvalidOperationException("Jwt:Key 尚未設定");
         options.TokenValidationParameters =
             new TokenValidationParameters
             {
@@ -50,6 +52,26 @@ builder.Services
 
                 ClockSkew = TimeSpan.Zero
             };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var tokenId = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
+                var stamp = context.Principal?.FindFirstValue("security_stamp");
+                var users = context.HttpContext.RequestServices
+                    .GetRequiredService<UserManager<ApplicationUser>>();
+                var revoked = context.HttpContext.RequestServices
+                    .GetRequiredService<RevokedTokenService>();
+                var user = userId is null ? null : await users.FindByIdAsync(userId);
+                if (user is null || string.IsNullOrEmpty(tokenId) ||
+                    string.IsNullOrEmpty(stamp) || stamp != user.SecurityStamp ||
+                    await revoked.IsRevoked(user.Id, tokenId))
+                {
+                    context.Fail("登入已失效，請重新登入");
+                }
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -59,6 +81,7 @@ builder.Services.AddScoped<IAuthReopnsitory, AuthReopnsitory>();
 builder.Services.AddScoped<ICreatorScheduleService, CreatorScheduleService>();
 builder.Services.AddScoped<ICreatorScheduleRepository, CreatorScheduleRepository>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<RevokedTokenService>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
@@ -160,3 +183,5 @@ app.MapGet("/api/test-db", async (AppDbContext db) =>
 });
 
 app.Run();
+
+public partial class Program { }
