@@ -6,7 +6,7 @@ public class CreatorProfiles//創作者主表
     public string IdentityUserId { get; set; } = string.Empty;//IdentityUser的Id
     public ApplicationUser IdentityUser { get; set; } = null!;
     public string DisplayName { get; set; } = string.Empty;//創作者名稱
-    public string? ContactEmail { get; set; }//聯絡Email註冊時必填，修改帳號時可選填
+    public string? ContactEmail { get; set; }//註冊時設定聯絡信箱；基本資料更新不修改此欄位
     public string? ContactPhone { get; set; }//聯絡電話
     public string Bio { get; set; } = string.Empty;//創作者簡介
     public string? AvatarUrl { get; set; }//頭像URL

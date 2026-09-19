@@ -1,0 +1,5 @@
+.profile-card { max-width: 620px; }
+.profile-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.profile-card input[readonly] { background: #f1f7fa; color: #688394; border-color: #deebf1; }
+.profile-actions { display: flex; justify-content: flex-end; margin-top: 24px; }
+.profile-actions .button { min-width: 110px; }

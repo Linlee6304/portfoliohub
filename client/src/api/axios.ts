@@ -38,7 +38,7 @@ export function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : "操作未完成，請稍後再試。";
   const data = error.response?.data;
   if (typeof data?.message === "string") return data.message;
-  if (data?.errors) return "請檢查電子信箱與表單內容是否正確。";
+  if (data?.errors) return "請檢查表單內容是否正確。";
   if (error.response?.status === 401) return "登入已過期，請重新登入。";
   if ([502, 503, 504].includes(error.response?.status ?? 0))
     return "服務目前無法連線，請稍後再試。";

@@ -1,24 +1,21 @@
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using PortfolioHub.Server.Data;
 using PortfolioHub.Server.DTOs;
 using PortfolioHub.Server.Models.Entities;
 using PortfolioHub.Server.Repositories;
 namespace PortfolioHub.Server.Services;
 
-public class AuthService(IAuthReopnsitory authRepository, UserManager<ApplicationUser> userManager,
-    AppDbContext context, IJwtService jwtService) : IAuthService
+public class AuthService(IAuthReopnsitory authRepository, IJwtService jwtService) : IAuthService
 {
     public async Task<ResponseAuthInfoDto> Login(RequestLoginRegisterDto request)
     {
-        var user = await userManager.FindByEmailAsync(request.Email.Trim());
+        var user = await authRepository.FindByEmail(request.Email.Trim());
         if (user is null) return new() { Message = "帳號不存在" };
-        if (!await userManager.CheckPasswordAsync(user, request.Password))
+        if (!await authRepository.CheckPassword(user, request.Password))
             return new() { Message = "密碼錯誤" };
         var account = await GetCurrentUser(user.Id);
         if (!account.Success) return new() { Message = account.Message };
-        var roles = await userManager.GetRolesAsync(user);
+        var roles = await authRepository.GetRoles(user);
         var token = jwtService.GenerateToken(user, roles);
         return new()
         {
@@ -34,37 +31,29 @@ public class AuthService(IAuthReopnsitory authRepository, UserManager<Applicatio
         if (request.Password != request.ConfirmPassword) return new() { Message = "兩次輸入的密碼不一致" };
         if (request.Password.Length < 6) return new() { Message = "密碼長度至少 6 個字元" };
         var email = request.Email.Trim();
-        if (await userManager.FindByEmailAsync(email) is not null) return new() { Message = "此信箱已註冊" };
-        await using var transaction = await context.Database.BeginTransactionAsync();
+        if (await authRepository.FindByEmail(email) is not null) return new() { Message = "此信箱已註冊" };
         var user = new ApplicationUser { UserName = email, Email = email };
-        var create = await userManager.CreateAsync(user, request.Password);
-        if (!create.Succeeded) return new() { Message = DescribeErrors(create) };
-        var role = await userManager.AddToRoleAsync(user, "Creator");
-        if (!role.Succeeded) return new() { Message = "無法建立創作者帳號，請稍後再試" };
-        await authRepository.CreateCreatorProfile(new CreatorProfiles
+        var result = await authRepository.CreateAccount(user, request.Password, new CreatorProfiles
         {
-            IdentityUserId = user.Id,
             DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? email : request.DisplayName.Trim(),
             ContactEmail = email, ContactPhone = request.ContactPhone?.Trim(),
             IsActive = true, WorkStatus = 0, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         });
-        await transaction.CommitAsync();
+        if (!result.Succeeded) return new() { Message = DescribeErrors(result) };
         return new() { Success = true, Message = "註冊成功，請登入" };
     }
 
     public async Task<ResponseGetAccountDto> GetCurrentUser(string userId)
     {
-        var user = await userManager.FindByIdAsync(userId);
+        var user = await authRepository.FindById(userId);
         if (user is null) return new() { Message = "登入帳號不存在" };
-        var roles = await userManager.GetRolesAsync(user);
-        if (roles.Contains("Admin"))
-            return new()
-            {
-                Success = true, Message = "查詢成功", IdentityUserId = user.Id,
-                Email = user.Email, ContactEmail = user.Email, DisplayName = user.UserName, Role = "Admin"
-            };
-        if (!roles.Contains("Creator")) return new() { Message = "此帳號未分配角色，請聯繫管理員" };
-        var profile = await context.CreatorProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.IdentityUserId == userId);
+        var roles = await authRepository.GetRoles(user);
+        var isAdmin = roles.Contains("Admin");
+        if (!isAdmin && !roles.Contains("Creator")) return new() { Message = "此帳號未分配角色，請聯繫管理員" };
+        var profile = await authRepository.GetProfile(userId);
+        if (profile is null && isAdmin)
+            return new() { Success = true, Message = "查詢成功", IdentityUserId = user.Id,
+                Email = user.Email, ContactEmail = user.Email, DisplayName = user.UserName, Role = "Admin" };
         if (profile is null || !profile.IsActive) return new() { Message = "創作者資料不存在或已停用，請聯繫管理員" };
         return new()
         {
@@ -72,58 +61,53 @@ public class AuthService(IAuthReopnsitory authRepository, UserManager<Applicatio
             Email = user.Email, ContactEmail = profile.ContactEmail,
             DisplayName = profile.DisplayName, ContactPhone = profile.ContactPhone,
             AvatarUrl = profile.AvatarUrl, WorkStatus = profile.WorkStatus,
-            Bio = profile.Bio, Role = "Creator", IsEmailExists = true, IsIdentityUserIdExists = true
+            Bio = profile.Bio, Role = isAdmin ? "Admin" : "Creator"
         };
     }
 
-    public async Task<ResponseGetAccountDto> GetAccountByEmail(string email)
+    public async Task<ResponseGetAccountDto> UpdateAccount(string userId, RequestUpdateProfileDto request)
     {
-        var user = await userManager.FindByEmailAsync(email.Trim());
-        return user is null ? new() { Message = "查無此帳號" } : await GetCurrentUser(user.Id);
-    }
-
-    public async Task<ResponseGetAccountDto> UpdateAccount(RequestAuthDto request)
-    {
-        var user = await userManager.FindByIdAsync(request.IdentityUserId);
-        if (user is null) return new() { Message = "登入帳號不存在" };
-        var profile = await context.CreatorProfiles.FirstOrDefaultAsync(p => p.IdentityUserId == user.Id);
-        if (profile is null) return new() { Message = "此帳號沒有創作者基本資料" };
-        var email = request.Email.Trim();
-        var owner = await userManager.FindByEmailAsync(email);
-        if (owner is not null && owner.Id != user.Id) return new() { Message = "此信箱已由其他帳號使用" };
+        var account = await GetCurrentUser(userId);
+        if (!account.Success) return account;
+        if (string.IsNullOrWhiteSpace(request.DisplayName)) return new() { Message = "請填入暱稱" };
         if (!string.IsNullOrWhiteSpace(request.AvatarUrl) &&
-            (!Uri.TryCreate(request.AvatarUrl, UriKind.Absolute, out var avatar) ||
+            (!Uri.TryCreate(request.AvatarUrl.Trim(), UriKind.Absolute, out var avatar) ||
              (avatar.Scheme != Uri.UriSchemeHttps && avatar.Scheme != Uri.UriSchemeHttp)))
             return new() { Message = "頭像請填入有效的圖片網址" };
-        await using var transaction = await context.Database.BeginTransactionAsync();
-        // UpdateAsync validates/normalizes both fields without rotating the password stamp.
-        if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
-            user.EmailConfirmed = false;
-        user.Email = email;
-        user.UserName = email;
-        var updateResult = await userManager.UpdateAsync(user);
-        if (!updateResult.Succeeded) return new() { Message = DescribeErrors(updateResult) };
-        profile.ContactEmail = email;
-        profile.DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? email : request.DisplayName.Trim();
-        profile.ContactPhone = request.ContactPhone?.Trim();
-        profile.AvatarUrl = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
-        profile.Bio = request.Bio?.Trim() ?? string.Empty;
-        if (request.WorkStatus.HasValue) profile.WorkStatus = request.WorkStatus.Value;
-        profile.UpdatedAt = DateTime.UtcNow;
-        await context.SaveChangesAsync();
-        await transaction.CommitAsync();
-        var result = await GetCurrentUser(user.Id);
-        result.Message = "基本資料已儲存";
+        if (!await authRepository.UpdateProfile(userId, request.DisplayName.Trim(), request.ContactPhone?.Trim(),
+            string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim(), request.Bio?.Trim() ?? string.Empty))
+            return new() { Message = "此帳號沒有可更新的基本資料" };
+        var result = await GetCurrentUser(userId);
+        result.Message = "儲存成功";
         return result;
     }
 
-    public async Task<ResponseChangePasswordDto> ChangePassword(RequestChangePasswordDto request)
+    public async Task<ResponseWorkStatusDto> UpdateWorkStatus(string userId, RequestWorkStatusDto request)
+    {
+        if (request.WorkStatus is not (>= 0 and <= 2)) return new() { Message = "接案狀態無效" };
+        var account = await GetCurrentUser(userId);
+        if (!account.Success) return new() { Message = account.Message };
+        if (!await authRepository.UpdateWorkStatus(userId, request.WorkStatus.Value))
+            return new() { Message = "此帳號沒有可更新的基本資料" };
+        return new() { Success = true, Message = "接案狀態已儲存", WorkStatus = request.WorkStatus.Value };
+    }
+
+    public Task Logout(string userId, string tokenId, long expiresAt) => authRepository.Revoke(userId, tokenId, expiresAt);
+
+    public async Task<bool> IsSessionValid(string? userId, string? tokenId, string? stamp)
+    {
+        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(tokenId) || string.IsNullOrEmpty(stamp)) return false;
+        var user = await authRepository.FindById(userId);
+        return user is not null && user.SecurityStamp == stamp && !await authRepository.IsRevoked(userId, tokenId);
+    }
+
+    public async Task<ResponseChangePasswordDto> ChangePassword(string userId, RequestChangePasswordDto request)
     {
         if (request.NewPassword != request.ConfirmNewPassword) return new() { Message = "新密碼與確認密碼不一致" };
         if (request.CurrentPassword == request.NewPassword) return new() { Message = "新密碼不可與目前密碼相同" };
-        var user = await userManager.FindByIdAsync(request.IdentityUserId);
+        var user = await authRepository.FindById(userId);
         if (user is null) return new() { Message = "登入帳號不存在" };
-        var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        var result = await authRepository.ChangePassword(user, request.CurrentPassword, request.NewPassword);
         // Identity rotates SecurityStamp, invalidating all JWTs issued before this change.
         return result.Succeeded
             ? new() { Success = true, Message = "密碼已更新，請重新登入" }

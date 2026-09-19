@@ -174,3 +174,13 @@
     gap: 5px;
   }
 }
+
+.account-dropdown { width: 270px; max-width: calc(100vw - 32px); }
+.account-dropdown[hidden] { display: none; }
+.work-status-control { padding: 12px 12px 16px; margin-bottom: 6px; border-bottom: 1px solid #e2eff6; }
+.work-status-heading { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; }
+.work-status-heading span { color: #1689bc; font-size: 12px; }
+.work-status-control input { width: 100%; margin: 16px 0 9px; accent-color: #229ed3; cursor: pointer; }
+.work-status-labels { display: flex; justify-content: space-between; font-size: 12px; color: #8294a0; }
+.work-status-labels .selected { color: #087db0; font-weight: 700; }
+.work-status-control small { display: block; margin-top: 12px; text-align: center; color: #8193a0; font-size: 11px; }

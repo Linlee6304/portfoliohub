@@ -4,6 +4,8 @@ import { useAuth } from "../../auth/AuthContext";
 import { errorMessage } from "../../api/axios";
 import Icon from "../Icon";
 import "./Header.css";
+import WorkStatus from "./WorkStatus";
+import { useToast } from "../ToastContext";
 
 function Avatar({ url, name }: { url: string | null; name: string }) {
   const [failed, setFailed] = useState(false);
@@ -30,6 +32,7 @@ export default function Header() {
   const ref = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
+  const notify = useToast();
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
@@ -106,12 +109,15 @@ export default function Header() {
             url={user.avatarUrl}
             name={user.displayName || user.email}
           />
-          {open && (
-            <nav
+          <nav
+              hidden={!open}
               id="account-dropdown"
               className="account-dropdown"
               aria-label="帳號選單"
             >
+              {user.workStatus != null && <WorkStatus key={user.identityUserId}
+                userId={user.identityUserId} initial={user.workStatus}
+                notify={notify} />}
               <Link
                 to="/change-password"
                 onClick={() => {
@@ -143,7 +149,6 @@ export default function Header() {
                 </p>
               )}
             </nav>
-          )}
         </div>
       ) : (
         <div className="auth-actions">

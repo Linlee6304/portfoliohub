@@ -9,7 +9,7 @@ export interface AuthState {
   logout: () => Promise<void>;
   clearSession: (message?: string) => void;
   refresh: () => Promise<void>;
-  updateUser: (user: Account) => void;
+  updateUser: (changes: Partial<Account> & Pick<Account, "identityUserId">) => void;
 }
 export const AuthContext = createContext<AuthState | null>(null);
 export function useAuth() {

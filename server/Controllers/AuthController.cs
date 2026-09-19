@@ -8,7 +8,7 @@ namespace PortfolioHub.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(IAuthService authService, RevokedTokenService revokedTokens) : ControllerBase
+public class AuthController(IAuthService authService) : ControllerBase
 {
     [AllowAnonymous, HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] RequestLoginRegisterDto request)
@@ -33,18 +33,23 @@ public class AuthController(IAuthService authService, RevokedTokenService revoke
     }
 
     [Authorize, HttpPut("profile")]
-    public async Task<IActionResult> UpdateProfile([FromBody] RequestAuthDto request)
+    public async Task<IActionResult> UpdateProfile([FromBody] RequestUpdateProfileDto request)
     {
-        request.IdentityUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var result = await authService.UpdateAccount(request);
+        var result = await authService.UpdateAccount(User.FindFirstValue(ClaimTypes.NameIdentifier)!, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [Authorize, HttpPatch("work-status")]
+    public async Task<IActionResult> UpdateWorkStatus([FromBody] RequestWorkStatusDto request)
+    {
+        var result = await authService.UpdateWorkStatus(User.FindFirstValue(ClaimTypes.NameIdentifier)!, request);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
     [Authorize, HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] RequestChangePasswordDto request)
     {
-        request.IdentityUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var result = await authService.ChangePassword(request);
+        var result = await authService.ChangePassword(User.FindFirstValue(ClaimTypes.NameIdentifier)!, request);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
@@ -56,7 +61,7 @@ public class AuthController(IAuthService authService, RevokedTokenService revoke
         var expiration = User.FindFirstValue(JwtRegisteredClaimNames.Exp);
         if (userId is null || tokenId is null || !long.TryParse(expiration, out var expiresAt))
             return Unauthorized(new ResponseAuthDto { Message = "登入憑證無效，請重新登入" });
-        await revokedTokens.Revoke(userId, tokenId, expiresAt);
+        await authService.Logout(userId, tokenId, expiresAt);
         return Ok(new ResponseAuthDto { Success = true, Message = "已登出" });
     }
 }

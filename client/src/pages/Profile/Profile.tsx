@@ -5,132 +5,66 @@ import { useAuth } from "../../auth/AuthContext";
 import { authService } from "../../services/authService";
 import type { Account, ProfileInput } from "../../services/authService";
 import { errorMessage } from "../../api/axios";
+import { useToast } from "../../components/ToastContext";
+import "./Profile.css";
+
 function ProfileForm({ account }: { account: Account }) {
   const { updateUser } = useAuth();
   const [form, setForm] = useState<ProfileInput>({
-    email: account.email || "",
-    displayName: account.displayName || "",
-    contactPhone: account.contactPhone || "",
-    avatarUrl: account.avatarUrl || "",
-    bio: account.bio || "",
-    workStatus: account.workStatus ?? 0,
+    displayName: account.displayName || "", contactPhone: account.contactPhone || "",
+    avatarUrl: account.avatarUrl || "", bio: account.bio || "",
   });
   const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState({ error: false, message: "" });
-  const field = (key: keyof ProfileInput, value: string | number) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const [error, setError] = useState("");
+  const notify = useToast();
+  const field = (key: keyof ProfileInput, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    setBusy(true);
-    setFeedback({ error: false, message: "" });
+    setBusy(true); setError("");
     try {
       const result = await authService.updateProfile(form);
-      updateUser(result);
-      setFeedback({ error: false, message: result.message });
-    } catch (failure) {
-      setFeedback({ error: true, message: errorMessage(failure) });
-    } finally {
-      setBusy(false);
-    }
+      // 只合併此表單負責的四個欄位，避免覆蓋同時更新的接案狀態。
+      const saved = { displayName: result.displayName, contactPhone: result.contactPhone || "",
+        avatarUrl: result.avatarUrl || "", bio: result.bio || "" };
+      updateUser({ identityUserId: account.identityUserId, ...saved });
+      setForm(saved);
+      notify("儲存成功");
+    } catch (failure) { setError(errorMessage(failure)); }
+    finally { setBusy(false); }
   }
-  if (account.role === "Admin")
-    return (
-      <section className="form-card">
-        <h1>基本資料</h1>
-        <p className="form-intro">管理員帳號</p>
-        <label className="field">
-          <span>使用者名稱</span>
-          <input value={account.displayName} readOnly />
-        </label>
-        <label className="field">
-          <span>電子信箱</span>
-          <input value={account.email} readOnly />
-        </label>
-      </section>
-    );
-  return (
-    <section className="form-card" style={{ maxWidth: 620 }}>
-      <h1>基本資料</h1>
-      <p className="form-intro">更新你的名稱、聯絡方式與創作者介紹。</p>
-      {feedback.message && (
-        <p
-          className={`feedback ${feedback.error ? "feedback-error" : "feedback-success"}`}
-          role={feedback.error ? "alert" : "status"}
-        >
-          {feedback.message}
-        </p>
-      )}
+  return <section className="form-card profile-card">
+    <h1>基本資料</h1>
+    <p className="form-intro">讓大家更認識你，更新你的暱稱與個人介紹。</p>
+    <label className="field"><span>登入信箱</span>
+      <input type="email" value={account.email} readOnly aria-label="登入信箱" aria-describedby="profile-email-hint" />
+      <small className="form-hint" id="profile-email-hint">登入信箱固定，無法修改。</small>
+    </label>
+    {account.workStatus == null ? <p className="form-intro">此帳戶尚無可更新的創作者基本資料。</p> :
       <form onSubmit={(event) => void submit(event)}>
-        <label className="field">
-          <span>使用者名稱</span>
-          <input
-            required
-            maxLength={100}
-            autoComplete="nickname"
-            value={form.displayName}
-            onChange={(e) => field("displayName", e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>電子信箱</span>
-          <input
-            type="email"
-            required
-            maxLength={256}
-            autoComplete="email"
-            value={form.email}
-            aria-label="電子信箱"
-            aria-describedby="profile-email-hint"
-            onChange={(e) => field("email", e.target.value)}
-          />
-          <small className="form-hint" id="profile-email-hint">同時作為登入信箱與公開聯絡信箱。</small>
-        </label>
-        <label className="field">
-          <span>聯絡電話</span>
-          <input
-            type="tel"
-            maxLength={30}
-            autoComplete="tel"
-            value={form.contactPhone}
-            onChange={(e) => field("contactPhone", e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>頭像圖片網址</span>
-          <input
-            type="url"
-            maxLength={2048}
-            value={form.avatarUrl}
-            onChange={(e) => field("avatarUrl", e.target.value)}
-            placeholder="https://…"
-          />
-        </label>
-        <label className="field">
-          <span>接案狀態</span>
-          <select
-            value={form.workStatus}
-            onChange={(e) => field("workStatus", Number(e.target.value))}
-          >
-            <option value={0}>不接案</option>
-            <option value={1}>接案中</option>
-            <option value={2}>可接案</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>個人簡介</span>
-          <textarea
-            maxLength={2000}
-            value={form.bio}
-            onChange={(e) => field("bio", e.target.value)}
-          />
-        </label>
-        <button className="button button-primary form-submit" disabled={busy}>
-          {busy ? "儲存中…" : "儲存變更"}
-        </button>
-      </form>
-    </section>
-  );
+        {error && <p className="feedback feedback-error" role="alert">{error}</p>}
+        <fieldset disabled={busy} className="profile-fields">
+          <label className="field"><span>暱稱</span>
+            <input required maxLength={100} autoComplete="nickname" value={form.displayName}
+              onChange={(e) => field("displayName", e.target.value)} />
+          </label>
+          <label className="field"><span>電話</span>
+            <input type="tel" maxLength={30} autoComplete="tel" value={form.contactPhone}
+              onChange={(e) => field("contactPhone", e.target.value)} />
+          </label>
+          <label className="field"><span>頭像圖片網址</span>
+            <input type="url" maxLength={2048} value={form.avatarUrl} placeholder="https://…"
+              onChange={(e) => field("avatarUrl", e.target.value)} />
+          </label>
+          <label className="field"><span>簡介</span>
+            <textarea aria-label="簡介" maxLength={2000} value={form.bio} onChange={(e) => field("bio", e.target.value)} />
+          </label>
+          <div className="profile-actions"><button className="button button-primary" type="submit">
+            {busy ? "儲存中…" : "儲存"}
+          </button></div>
+        </fieldset>
+      </form>}
+  </section>;
 }
 export default function Profile() {
   const [account, setAccount] = useState<Account | null>(null);

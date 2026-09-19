@@ -59,14 +59,8 @@ builder.Services
                 var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
                 var tokenId = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
                 var stamp = context.Principal?.FindFirstValue("security_stamp");
-                var users = context.HttpContext.RequestServices
-                    .GetRequiredService<UserManager<ApplicationUser>>();
-                var revoked = context.HttpContext.RequestServices
-                    .GetRequiredService<RevokedTokenService>();
-                var user = userId is null ? null : await users.FindByIdAsync(userId);
-                if (user is null || string.IsNullOrEmpty(tokenId) ||
-                    string.IsNullOrEmpty(stamp) || stamp != user.SecurityStamp ||
-                    await revoked.IsRevoked(user.Id, tokenId))
+                var auth = context.HttpContext.RequestServices.GetRequiredService<IAuthService>();
+                if (!await auth.IsSessionValid(userId, tokenId, stamp))
                 {
                     context.Fail("登入已失效，請重新登入");
                 }
@@ -81,7 +75,6 @@ builder.Services.AddScoped<IAuthReopnsitory, AuthReopnsitory>();
 builder.Services.AddScoped<ICreatorScheduleService, CreatorScheduleService>();
 builder.Services.AddScoped<ICreatorScheduleRepository, CreatorScheduleRepository>();
 builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<RevokedTokenService>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
@@ -94,8 +87,6 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider
         .GetRequiredService<RoleManager<IdentityRole>>();
 
-    var userManager = scope.ServiceProvider
-        .GetRequiredService<UserManager<ApplicationUser>>();
 
     if (!await roleManager.RoleExistsAsync("Admin"))
     {
@@ -109,55 +100,8 @@ using (var scope = app.Services.CreateScope())
             new IdentityRole("Creator"));
     }
 
-    var adminEmail = builder.Configuration["Admin:Email"]
-        ?? throw new InvalidOperationException(
-            "Admin:Email 尚未設定");
+    // 只建立角色定義；管理員帳戶與角色由管理者直接在資料庫維護。
 
-    var adminPassword = builder.Configuration["Admin:Password"]
-        ?? throw new InvalidOperationException(
-            "Admin:Password 尚未設定");
-
-    var admin = await userManager.FindByEmailAsync(adminEmail);
-
-    if (admin == null)
-    {
-        admin = new ApplicationUser
-        {
-            UserName = adminEmail,
-            Email = adminEmail
-        };
-
-        var createResult = await userManager.CreateAsync(
-            admin,
-            adminPassword);
-
-        if (!createResult.Succeeded)
-        {
-            var errors = string.Join(
-                ", ",
-                createResult.Errors.Select(x => x.Description));
-
-            throw new InvalidOperationException(
-                $"建立管理員失敗：{errors}");
-        }
-    }
-
-    if (!await userManager.IsInRoleAsync(admin, "Admin"))
-    {
-        var roleResult = await userManager.AddToRoleAsync(
-            admin,
-            "Admin");
-
-        if (!roleResult.Succeeded)
-        {
-            var errors = string.Join(
-                ", ",
-                roleResult.Errors.Select(x => x.Description));
-
-            throw new InvalidOperationException(
-                $"加入管理員角色失敗：{errors}");
-        }
-    }
 }
 
 if (app.Environment.IsDevelopment())

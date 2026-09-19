@@ -4,6 +4,7 @@ import Header from "./components/Header/Header";
 import Icon from "./components/Icon";
 import { useAuth } from "./auth/AuthContext";
 import "./App.css";
+import ToastProvider from "./components/ToastProvider";
 
 const navigation = [
   { to: "/", label: "首頁", icon: "home" as const },
@@ -29,7 +30,7 @@ export default function App() {
     if (window.matchMedia("(max-width: 700px)").matches) setCollapsed(true);
   };
   return (
-    <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
+    <ToastProvider><div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
       <a className="skip-link" href="#main-content">
         跳至主要內容
       </a>
@@ -91,6 +92,6 @@ export default function App() {
           <Outlet />
         </main>
       </div>
-    </div>
+    </div></ToastProvider>
   );
 }

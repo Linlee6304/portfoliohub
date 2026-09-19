@@ -104,7 +104,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           setStatus("loading");
           await restore();
         },
-        updateUser: setUser,
+        updateUser: (changes) => setUser((previous) =>
+          previous?.identityUserId === changes.identityUserId ? { ...previous, ...changes } : previous),
       }}
     >
       {children}

@@ -1,62 +1,69 @@
-using PortfolioHub.Server.Data;
-using PortfolioHub.Server.Models;
-using PortfolioHub.Server.DTOs;
-using PortfolioHub.Server.Models.Entities;
+using System.Globalization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
-namespace PortfolioHub.Server.Repositories
+using PortfolioHub.Server.Data;
+using PortfolioHub.Server.Models.Entities;
+namespace PortfolioHub.Server.Repositories;
+public class AuthReopnsitory(AppDbContext db, UserManager<ApplicationUser> users) : IAuthReopnsitory
 {
-    public class AuthReopnsitory : IAuthReopnsitory
+    public Task<ApplicationUser?> FindByEmail(string email) => users.FindByEmailAsync(email);
+    public Task<ApplicationUser?> FindById(string userId) => users.FindByIdAsync(userId);
+    public Task<bool> CheckPassword(ApplicationUser user, string password) => users.CheckPasswordAsync(user, password);
+    public Task<IList<string>> GetRoles(ApplicationUser user) => users.GetRolesAsync(user);
+    public Task<IdentityResult> ChangePassword(ApplicationUser user, string currentPassword, string newPassword) =>
+        users.ChangePasswordAsync(user, currentPassword, newPassword);
+    public Task<CreatorProfiles?> GetProfile(string userId) =>
+        db.CreatorProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.IdentityUserId == userId);
+
+    public async Task<IdentityResult> CreateAccount(ApplicationUser user, string password, CreatorProfiles profile)
     {
-        private readonly AppDbContext _context;
-        public AuthReopnsitory(AppDbContext context)
-        {
-            _context = context;
-        }
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var result = await users.CreateAsync(user, password);
+        if (!result.Succeeded) return result;
+        result = await users.AddToRoleAsync(user, "Creator");
+        if (!result.Succeeded) return result;
+        profile.IdentityUserId = user.Id;
+        db.CreatorProfiles.Add(profile);
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return IdentityResult.Success;
+    }
 
-        public Task CreateCreatorProfile(CreatorProfiles profile)//創建創作者資料
-        {
-            _context.CreatorProfiles.Add(profile);
-            return _context.SaveChangesAsync();
-        }
-        public async Task<ResponseGetAccountDto> GetAccountByEmail(string email)
-        {
-            //邏輯整理:根據email查詢用戶IdentityUserId，然後根據IdentityUserId jion查詢CreatorProfiles，最後組裝ResponseGetAccountDto回傳
-            var result = await _context.CreatorProfiles
-                .Where(x => x.IdentityUser.Email == email)
-                .Select(x => new ResponseGetAccountDto
-                {
-                    DisplayName = x.DisplayName,//使用者名稱
-                    ContactEmail = x.ContactEmail,//使用者信箱
-                    ContactPhone = x.ContactPhone,//使用者電話
-                    AvatarUrl = x.AvatarUrl,//使用者頭像
-                    Bio = x.Bio//使用者簡介
-                })
-                .FirstOrDefaultAsync();
-            return result;
-        }
+    public async Task<bool> UpdateProfile(string userId, string displayName, string? phone, string? avatarUrl, string bio)
+    {
+        // 指定更新欄位，避免和接案狀態的獨立請求互相覆寫。
+        var count = await db.CreatorProfiles.Where(p => p.IdentityUserId == userId && p.IsActive)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.DisplayName, displayName)
+                .SetProperty(p => p.ContactPhone, phone).SetProperty(p => p.AvatarUrl, avatarUrl)
+                .SetProperty(p => p.Bio, bio).SetProperty(p => p.UpdatedAt, DateTime.UtcNow));
+        return count == 1;
+    }
+    public async Task<bool> UpdateWorkStatus(string userId, int workStatus) =>
+        await db.CreatorProfiles.Where(p => p.IdentityUserId == userId && p.IsActive)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.WorkStatus, workStatus)
+                .SetProperty(p => p.UpdatedAt, DateTime.UtcNow)) == 1;
+    private const string Provider = "PortfolioHub.RevokedJwt";
+    public Task<bool> IsRevoked(string userId, string tokenId) =>
+        db.UserTokens.AnyAsync(t => t.UserId == userId && t.LoginProvider == Provider && t.Name == tokenId);
 
-        public async Task<bool> IsEmailExists(string email)
+    public async Task Revoke(string userId, string tokenId, long expiresAt)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var previous = await db.UserTokens
+            .Where(t => t.UserId == userId && t.LoginProvider == Provider).ToListAsync();
+        db.UserTokens.RemoveRange(previous.Where(t => long.TryParse(t.Value, out var expiry) && expiry <= now));
+        if (!previous.Any(t => t.Name == tokenId))
+            db.UserTokens.Add(new IdentityUserToken<string>
+            {
+                UserId = userId, LoginProvider = Provider, Name = tokenId,
+                Value = expiresAt.ToString(CultureInfo.InvariantCulture)
+            });
+        try { await db.SaveChangesAsync(); }
+        catch (DbUpdateException)
         {
-            return await _context.Users.AnyAsync(u => u.Email == email);
-        }
-        //檢查identityUserId是否存在於CreatorProfiles中
-        public async Task<bool> IsIdentityUserIdExists(string identityUserId)
-        {
-            return await _context.CreatorProfiles.AnyAsync(p => p.IdentityUserId == identityUserId);
-        }
-        public async Task<CreatorProfiles?>
-    GetCreatorProfileByIdentityUserId(string identityUserId)
-        {
-            return await _context.CreatorProfiles
-                .FirstOrDefaultAsync(
-                    p => p.IdentityUserId == identityUserId);
-        }
-
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
+            // Concurrent logout requests may try to insert the same revocation.
+            db.ChangeTracker.Clear();
+            if (!await IsRevoked(userId, tokenId)) throw;
         }
     }
 }

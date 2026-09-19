@@ -19,12 +19,10 @@ export interface RegisterInput extends LoginInput {
   contactPhone?: string;
 }
 export interface ProfileInput {
-  email: string;
   displayName: string;
   contactPhone: string;
   avatarUrl: string;
   bio: string;
-  workStatus: number;
 }
 export interface PasswordInput {
   currentPassword: string;
@@ -51,6 +49,9 @@ export const authService = {
   },
   async updateProfile(input: ProfileInput) {
     return (await api.put<Account & Message>("/Auth/profile", input)).data;
+  },
+  async updateWorkStatus(workStatus: number) {
+    return (await api.patch<Message & { workStatus: number }>("/Auth/work-status", { workStatus })).data;
   },
   async changePassword(input: PasswordInput) {
     return (await api.post<Message>("/Auth/change-password", input)).data;

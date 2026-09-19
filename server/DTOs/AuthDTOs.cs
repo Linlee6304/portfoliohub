@@ -13,22 +13,26 @@ public class RequestLoginRegisterDto
     [StringLength(30)]
     public string? ContactPhone { get; set; }
 }
-public class RequestAuthDto
+// 白名單 DTO：登入信箱、IdentityUserId、角色、接案狀態都不在此更新契約中。
+public class RequestUpdateProfileDto
 {
-    // The controller takes this from the authenticated JWT, never from user input.
-    public string IdentityUserId { get; set; } = string.Empty;
-    [Required, EmailAddress, StringLength(256)]
-    public string Email { get; set; } = string.Empty;
-    [StringLength(100)]
-    public string? DisplayName { get; set; }
+    [Required, StringLength(100)]
+    public string DisplayName { get; set; } = string.Empty;
     [StringLength(30)]
     public string? ContactPhone { get; set; }
     [StringLength(2048)]
     public string? AvatarUrl { get; set; }
-    [Range(0, 2)]
-    public int? WorkStatus { get; set; }
     [StringLength(2000)]
     public string? Bio { get; set; }
+}
+public class RequestWorkStatusDto
+{
+    [Required, Range(0, 2)]
+    public int? WorkStatus { get; set; }
+}
+public class ResponseWorkStatusDto : ResponseAuthDto
+{
+    public int? WorkStatus { get; set; }
 }
 public class ResponseAuthDto
 {
@@ -57,12 +61,9 @@ public class ResponseGetAccountDto : ResponseAuthDto
     public int? WorkStatus { get; set; }
     public string? Bio { get; set; }
     public string? Role { get; set; }
-    public bool? IsEmailExists { get; set; }
-    public bool? IsIdentityUserIdExists { get; set; }
 }
 public class RequestChangePasswordDto
 {
-    public string IdentityUserId { get; set; } = string.Empty;
     [Required, StringLength(128)]
     public string CurrentPassword { get; set; } = string.Empty;
     [Required, StringLength(128, MinimumLength = 6)]

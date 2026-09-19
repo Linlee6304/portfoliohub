@@ -1,0 +1,7 @@
+.toast-card { position: fixed; z-index: 100; right: 28px; bottom: 28px; display: flex; align-items: center; gap: 12px; max-width: min(380px, calc(100vw - 32px)); padding: 17px 22px; border: 1px solid #a6dff8; border-radius: 16px; background: #fff; color: #17658a; box-shadow: 0 12px 42px #277ba42a; animation: toast-appear .18s ease-out; }
+.toast-mark { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: #e2f5ff; font-weight: 700; }
+.toast-error { border-color: #efb8b8; color: #a83838; }
+.toast-error .toast-mark { background: #fff0f0; }
+@keyframes toast-appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 600px) { .toast-card { right: 16px; bottom: 16px; } }
+@media (prefers-reduced-motion: reduce) { .toast-card { animation: none; } }
