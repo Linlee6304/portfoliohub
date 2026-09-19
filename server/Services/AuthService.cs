@@ -98,7 +98,9 @@ public class AuthService(IAuthReopnsitory authRepository, IJwtService jwtService
     {
         if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(tokenId) || string.IsNullOrEmpty(stamp)) return false;
         var user = await authRepository.FindById(userId);
-        return user is not null && user.SecurityStamp == stamp && !await authRepository.IsRevoked(userId, tokenId);
+        if (user is null || user.SecurityStamp != stamp || await authRepository.IsRevoked(userId, tokenId)) return false;
+        // 每次受保護請求均確認帳戶狀態，關閉後不能繼續使用既有登入。
+        return (await GetCurrentUser(userId)).Success;
     }
 
     public async Task<ResponseChangePasswordDto> ChangePassword(string userId, RequestChangePasswordDto request)

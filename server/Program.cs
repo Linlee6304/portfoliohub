@@ -71,6 +71,8 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
 builder.Services.AddScoped<IAuthReopnsitory, AuthReopnsitory>();
 builder.Services.AddScoped<ICreatorScheduleService, CreatorScheduleService>();
 builder.Services.AddScoped<ICreatorScheduleRepository, CreatorScheduleRepository>();

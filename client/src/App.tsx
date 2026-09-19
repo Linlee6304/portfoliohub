@@ -18,13 +18,17 @@ const pageNames: Record<string, string> = {
   "/login": "登入",
   "/register": "註冊",
   "/change-password": "修改密碼",
+  "/admin/users": "一般使用者",
 };
 export default function App() {
   const [collapsed, setCollapsed] = useState(
     () => window.matchMedia("(max-width: 700px)").matches,
   );
   const { pathname } = useLocation();
-  const { notice } = useAuth();
+  const { notice, user } = useAuth();
+  const items = user?.role === "Admin"
+    ? [...navigation, { to: "/admin/users", label: "一般使用者", icon: "user" as const }]
+    : navigation;
   const page = pageNames[pathname] || "找不到頁面";
   const closeMobile = () => {
     if (window.matchMedia("(max-width: 700px)").matches) setCollapsed(true);
@@ -59,7 +63,7 @@ export default function App() {
           </button>
         </div>
         <nav id="sidebar-navigation" className="sidebar-navigation">
-          {navigation.map((item) => (
+          {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

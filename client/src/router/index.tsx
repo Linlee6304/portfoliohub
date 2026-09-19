@@ -8,6 +8,8 @@ import Register from "../pages/Auth/Register";
 import ChangePassword from "../pages/Auth/ChangePassword";
 import Profile from "../pages/Profile/Profile";
 import WorkList from "../pages/Works/WorkList";
+import AdminRoute from "../components/ProtectedRoute/AdminRoute";
+import AdminUsers from "../pages/Admin/AdminUsers";
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -21,6 +23,9 @@ export default function AppRouter() {
             <Route element={<ProtectedRoute />}>
               <Route path="profile" element={<Profile />} />
               <Route path="change-password" element={<ChangePassword />} />
+              <Route element={<AdminRoute />}>
+                <Route path="admin/users" element={<AdminUsers />} />
+              </Route>
             </Route>
             <Route
               path="*"
