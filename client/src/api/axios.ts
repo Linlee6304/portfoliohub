@@ -40,6 +40,10 @@ export function errorMessage(error: unknown): string {
   if (typeof data?.message === "string") return data.message;
   if (data?.errors) return "請檢查電子信箱與表單內容是否正確。";
   if (error.response?.status === 401) return "登入已過期，請重新登入。";
+  if ([502, 503, 504].includes(error.response?.status ?? 0))
+    return "服務目前無法連線，請稍後再試。";
+  if ((error.response?.status ?? 0) >= 500)
+    return "服務處理發生錯誤，請稍後再試。";
   if (!error.response) return "目前無法連線，請確認網路或稍後再試。";
   return "操作未完成，請稍後再試。";
 }
