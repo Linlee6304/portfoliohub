@@ -11,8 +11,10 @@ export default function Login() {
   const [error, setError] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
-  const from = ["/profile", "/change-password"].includes(location.state?.from)
-    ? location.state.from
+  const requestedPath: unknown = location.state?.from;
+  const from = typeof requestedPath === "string" &&
+    (["/profile", "/change-password"].includes(requestedPath) || /^\/works(?:\/new|\/\d+\/edit)?$/.test(requestedPath))
+    ? requestedPath
     : "/";
   if (user) return <Navigate to={from} replace />;
   async function submit(event: FormEvent) {

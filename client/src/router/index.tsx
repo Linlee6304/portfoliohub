@@ -8,6 +8,7 @@ import Register from "../pages/Auth/Register";
 import ChangePassword from "../pages/Auth/ChangePassword";
 import Profile from "../pages/Profile/Profile";
 import WorkList from "../pages/Works/WorkList";
+import WorkEdit from "../pages/Works/WorkEdit";
 import AdminRoute from "../components/ProtectedRoute/AdminRoute";
 import AdminUsers from "../pages/Admin/AdminUsers";
 export default function AppRouter() {
@@ -17,10 +18,12 @@ export default function AppRouter() {
         <Routes>
           <Route element={<App />}>
             <Route index element={<Home />} />
-            <Route path="works" element={<WorkList />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
             <Route element={<ProtectedRoute />}>
+              <Route path="works" element={<WorkList />} />
+              <Route path="works/new" element={<WorkEdit />} />
+              <Route path="works/:workId/edit" element={<WorkEdit />} />
               <Route path="profile" element={<Profile />} />
               <Route path="change-password" element={<ChangePassword />} />
               <Route element={<AdminRoute />}>

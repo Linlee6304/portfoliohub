@@ -1,10 +1,14 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace PortfolioHub.Server.Models.Entities;
 
 public class Works//作品主表
 {
     public int WorkId { get; set; }//PK,int NotNull流水號
     public string Title { get; set; } = string.Empty;//作品名稱
-    public string Description { get; set; } = string.Empty;//作品描述
+    public string? Description { get; set; } = string.Empty;//作品描述；既有資料庫允許 NULL
+    // 保留既有程式屬性拼字，明確對應 SQL Server 的 StartDate，無須改資料表。
+    [Column("StartDate")]
     public DateTime? StarDate { get; set; } //開始日期
     public DateTime? EndDate { get; set; } //結束日期
     public int Status { get; set; } //作品狀態

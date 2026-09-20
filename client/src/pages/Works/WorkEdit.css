@@ -1,0 +1,10 @@
+.work-editor { max-width: 920px; margin: 0 auto; }
+.work-back { display: inline-block; text-decoration: none; margin-bottom: 18px; }
+.work-form { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 30px; }
+.work-form fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }
+.work-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.work-form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+@media (max-width: 600px) {
+  .work-form { padding: 20px 16px; }
+  .work-dates { grid-template-columns: 1fr; gap: 0; }
+}

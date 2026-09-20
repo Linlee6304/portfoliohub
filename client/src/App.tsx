@@ -29,7 +29,9 @@ export default function App() {
   const items = user?.role === "Admin"
     ? [...navigation, { to: "/admin/users", label: "一般使用者", icon: "user" as const }]
     : navigation;
-  const page = pageNames[pathname] || "找不到頁面";
+  const page = pathname === "/works/new" ? "新增作品"
+    : /^\/works\/[^/]+\/edit$/.test(pathname) ? "編輯作品"
+    : pageNames[pathname] || "找不到頁面";
   const closeMobile = () => {
     if (window.matchMedia("(max-width: 700px)").matches) setCollapsed(true);
   };

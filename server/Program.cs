@@ -77,6 +77,8 @@ builder.Services.AddScoped<IAuthReopnsitory, AuthReopnsitory>();
 builder.Services.AddScoped<ICreatorScheduleService, CreatorScheduleService>();
 builder.Services.AddScoped<ICreatorScheduleRepository, CreatorScheduleRepository>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IWorkService, WorkService>();
+builder.Services.AddScoped<IWorkRepository, WorkRepository>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
