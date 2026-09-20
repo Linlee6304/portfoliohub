@@ -20,6 +20,9 @@ public class WorkColumnMappingTests
             .OrderByDescending(w => w.UpdatedAt).ToQueryString();
         Assert.Contains("[w].[StartDate]", sql);
         Assert.DoesNotContain("[w].[StarDate]", sql);
+        var mediaType = db.Model.FindEntityType(typeof(WorkMedia))!.FindProperty(nameof(WorkMedia.MediaType))!;
+        Assert.Equal(typeof(int), mediaType.ClrType);
+        Assert.Equal("int", mediaType.GetColumnType());
     }
 
     [Fact]
@@ -43,6 +46,11 @@ public class WorkColumnMappingTests
                 Role TEXT NOT NULL, SortOrder INTEGER NOT NULL,
                 PRIMARY KEY (WorkId, CreatorId)
             );
+            CREATE TABLE WorkMedia (
+                MediaId INTEGER PRIMARY KEY AUTOINCREMENT, WorkId INTEGER NOT NULL,
+                MediaType INTEGER NOT NULL, MediaUrl TEXT NOT NULL,
+                SortOrder INTEGER NOT NULL, CreatedAt TEXT NOT NULL
+            );
             CREATE TABLE CreatorProfiles (
                 CreatorId INTEGER PRIMARY KEY,
                 IdentityUserId TEXT NOT NULL, IsActive INTEGER NOT NULL
@@ -59,7 +67,8 @@ public class WorkColumnMappingTests
         db.ChangeTracker.Clear();
         Assert.Equal(firstDate, (await repository.FindAsync(1, work.WorkId, CancellationToken.None))!.StarDate);
         var changedDate = new DateTime(2026, 9, 2);
-        await repository.UpdateAsync(1, work.WorkId, "更新日期", "", changedDate, null, DateTime.UtcNow, CancellationToken.None);
+        await repository.UpdateAsync(1, work.WorkId, new Works { Title = "更新日期", Description = "", StarDate = changedDate,
+            UpdatedAt = DateTime.UtcNow, WorkType = 1, Status = 1 }, false, CancellationToken.None);
         db.ChangeTracker.Clear();
         Assert.Equal(changedDate, Assert.Single(await repository.ListAsync(1, CancellationToken.None)).StarDate);
         // 模擬既有資料中的 NULL 描述，API 應轉為空字串供前端表單使用。

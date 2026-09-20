@@ -15,10 +15,10 @@ public class WorkRepository(AppDbContext db) : IWorkRepository
         .Where(w => w.WorksCreators.Any(c => c.CreatorId == creatorId));
 
     public Task<List<Works>> ListAsync(int creatorId, CancellationToken ct) => Mine(creatorId)
-        .AsNoTracking().OrderByDescending(w => w.UpdatedAt).ThenByDescending(w => w.WorkId).ToListAsync(ct);
+        .AsNoTracking().Include(w => w.WorkMedia).OrderByDescending(w => w.UpdatedAt).ThenByDescending(w => w.WorkId).ToListAsync(ct);
 
     public Task<Works?> FindAsync(int creatorId, int workId, CancellationToken ct) => Mine(creatorId)
-        .AsNoTracking().SingleOrDefaultAsync(w => w.WorkId == workId, ct);
+        .AsNoTracking().Include(w => w.WorkMedia).SingleOrDefaultAsync(w => w.WorkId == workId, ct);
 
     public async Task<Works> CreateAsync(int creatorId, Works work, CancellationToken ct)
     {
@@ -28,19 +28,44 @@ public class WorkRepository(AppDbContext db) : IWorkRepository
         return work;
     }
 
-    public async Task<Works?> UpdateAsync(int creatorId, int workId, string title, string description,
-        DateTime? startDate, DateTime? endDate, DateTime updatedAt, CancellationToken ct)
+    public async Task<WorkUpdateResult> UpdateAsync(int creatorId, int workId, Works changes,
+        bool replaceMedia, CancellationToken ct)
     {
-        var work = await Mine(creatorId).SingleOrDefaultAsync(w => w.WorkId == workId, ct);
-        if (work is null) return null;
-        work.Title = title;
-        work.Description = description;
-        // 沿用資料庫既有 StarDate 拼字；對外 DTO 使用 StartDate。
-        work.StarDate = startDate;
-        work.EndDate = endDate;
-        work.UpdatedAt = updatedAt;
+        var work = await Mine(creatorId).Include(w => w.WorkMedia).SingleOrDefaultAsync(w => w.WorkId == workId, ct);
+        if (work is null) return new(null);
+        if (replaceMedia && changes.WorkMedia.Any(m => m.MediaId > 0 && !work.WorkMedia.Any(old => old.MediaId == m.MediaId)))
+            return new(null, true);
+        work.Title = changes.Title;
+        work.Description = changes.Description;
+        // CLR 舊名稱 StarDate 已映射至資料庫 StartDate。
+        work.StarDate = changes.StarDate;
+        work.EndDate = changes.EndDate;
+        work.WorkType = changes.WorkType;
+        work.Status = changes.Status;
+        work.UpdatedAt = changes.UpdatedAt;
+        if (replaceMedia)
+        {
+            foreach (var old in work.WorkMedia.ToList())
+                if (!changes.WorkMedia.Any(m => m.MediaId == old.MediaId))
+                {
+                    db.WorkMedia.Remove(old);
+                    work.WorkMedia.Remove(old);
+                }
+            foreach (var item in changes.WorkMedia)
+            {
+                if (item.MediaId == 0) work.WorkMedia.Add(item);
+                else
+                {
+                    var old = work.WorkMedia.Single(m => m.MediaId == item.MediaId);
+                    old.MediaType = item.MediaType;
+                    old.MediaUrl = item.MediaUrl;
+                    old.SortOrder = item.SortOrder;
+                }
+            }
+        }
+        // EF 的單次 SaveChanges 交易使主表與媒體全部成功或全部回滾。
         await db.SaveChangesAsync(ct);
-        return work;
+        return new(work);
     }
 
     public async Task<WorkWriteResult> DeleteAsync(int creatorId, int[] workIds, CancellationToken ct)

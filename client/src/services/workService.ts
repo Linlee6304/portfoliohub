@@ -1,10 +1,26 @@
 import { api } from "../api/axios";
 
+export function validMediaUrl(value: string) {
+  if (!value.trim() || value.length > 2048) return false;
+  try {
+    const url = new URL(value.trim());
+    return /^https?:\/\//i.test(value.trim()) && ["http:", "https:"].includes(url.protocol) && !!url.hostname;
+  } catch { return false; }
+}
+
+export interface WorkMediaInput {
+  mediaId: number;
+  mediaType: number;
+  mediaUrl: string;
+}
 export interface WorkInput {
   title: string;
   description: string;
   startDate: string | null;
   endDate: string | null;
+  workType: number;
+  status: number;
+  media: WorkMediaInput[];
 }
 export interface Work extends WorkInput {
   workId: number;

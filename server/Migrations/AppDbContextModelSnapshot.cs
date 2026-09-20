@@ -317,9 +317,8 @@ namespace server.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("MediaType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("MediaType")
+                        .HasColumnType("int");
 
                     b.Property<string>("MediaUrl")
                         .IsRequired()
