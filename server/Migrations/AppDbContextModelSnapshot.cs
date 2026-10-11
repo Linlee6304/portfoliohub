@@ -288,7 +288,8 @@ namespace server.Migrations
                         .HasColumnType("tinyint");
 
                     b.Property<string>("Remarks")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Remark");
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");

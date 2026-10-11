@@ -2,9 +2,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { errorMessage } from "../../api/axios";
 import { useToast } from "../../components/ToastContext";
-import { workService, validMediaUrl } from "../../services/workService";
+import { workService, validMediaUrl, featureError, type FeatureDraft } from "../../services/workService";
 import "./WorkEdit.css";
 import { WorkMediaEditor, type MediaDraft } from "./WorkMediaEditor";
+import { WorkFeatureEditor } from "./WorkFeatureEditor";
 
 interface FormValues { title: string; description: string; startDate: string; endDate: string }
 const empty: FormValues = { title: "", description: "", startDate: "", endDate: "" };
@@ -31,6 +32,7 @@ function WorkEditor({ workId, onCancel, onSaved }: {
   const [workType, setWorkType] = useState(1);
   const [status, setStatus] = useState(1);
   const [media, setMedia] = useState<MediaDraft[]>([]);
+  const [features, setFeatures] = useState<FeatureDraft[]>([]);
   const pending = useRef(false);
 
   useEffect(() => {
@@ -43,6 +45,9 @@ function WorkEditor({ workId, onCancel, onSaved }: {
       setWorkType(work.workType >= 1 && work.workType <= 3 ? work.workType : 1);
       setStatus(work.status === 1 ? 1 : 0);
       setMedia((work.media ?? []).map((item) => ({ ...item, key: crypto.randomUUID(), open: false })));
+      setFeatures((work.features ?? []).map((item) => ({ ...item, key: crypto.randomUUID(), open: false,
+        startDate: item.startDate?.slice(0, 10) || null, endDate: item.endDate?.slice(0, 10) || null,
+        introduction: item.introduction ?? "" })));
       setLoaded(true);
     }).catch((failure: unknown) => {
       if (!controller.signal.aborted) setLoadError(errorMessage(failure));
@@ -57,6 +62,13 @@ function WorkEditor({ workId, onCancel, onSaved }: {
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       setError("結束日期不可早於開始日期"); return;
     }
+    const invalidFeature = features.find((item) => featureError(item));
+    if (invalidFeature) {
+      setFeatures((items) => items.map((item) => ({ ...item, error: featureError(item), open: item.open || !!featureError(item) })));
+      setError("請修正功能區域標示的欄位。");
+      requestAnimationFrame(() => document.getElementById(`feature-${invalidFeature.key}`)?.scrollIntoView({ block: "center" }));
+      return;
+    }
     if (media.some((item) => !validMediaUrl(item.mediaUrl) || ![1, 2, 3].includes(item.mediaType))) {
       setMedia((items) => items.map((item) => ({ ...item,
         open: item.open || !validMediaUrl(item.mediaUrl) || ![1, 2, 3].includes(item.mediaType) })));
@@ -69,7 +81,11 @@ function WorkEditor({ workId, onCancel, onSaved }: {
     try {
       const input = { title: form.title.trim(), description: form.description.trim(),
         startDate: form.startDate || null, endDate: form.endDate || null, workType, status,
-        media: media.map(({ mediaId, mediaType, mediaUrl }) => ({ mediaId, mediaType, mediaUrl: mediaUrl.trim() })) };
+        media: media.map(({ mediaId, mediaType, mediaUrl }) => ({ mediaId, mediaType, mediaUrl: mediaUrl.trim() })),
+        features: features.map(({ featureId, featureName, startDate, endDate, status, progress, introduction }) => ({
+          featureId, featureName: featureName.trim(), startDate: startDate || null, endDate: endDate || null,
+          status, progress: Number(progress), introduction: introduction.trim(),
+        })) };
       if (workId) await workService.update(Number(workId), input);
       else await workService.create(input);
       onSaved();
@@ -85,11 +101,11 @@ function WorkEditor({ workId, onCancel, onSaved }: {
   return <section className="work-editor">
     {saving ? <span className="work-back">儲存中…</span> : <Link to="/works" className="work-back">← 作品列表</Link>}
     <h1>{workId ? "編輯作品" : "新增作品"}</h1>
-    <p className="page-subtitle">填寫作品的基本資料</p>
+    <p className="page-subtitle">管理作品、功能進度與媒體連結</p>
     {loadError ? <div className="feedback feedback-error"><p role="alert">{loadError}</p>
       <button className="button button-quiet" onClick={() => { setLoadError(""); setAttempt((n) => n + 1); }}>重新載入</button></div>
       : !loaded ? <p role="status">正在載入作品…</p>
-      : <form className="work-form" onSubmit={(event) => void save(event)}>
+      : <form className="work-form" noValidate onSubmit={(event) => void save(event)}>
         <fieldset disabled={saving}>
           <label className="field"><span>作品名稱 *</span><input required maxLength={200} value={form.title}
             onChange={(e) => field("title", e.target.value)} placeholder="請輸入作品名稱" /></label>
@@ -103,7 +119,7 @@ function WorkEditor({ workId, onCancel, onSaved }: {
               <strong>{status === 1 ? "公布" : "隱藏"}</strong></div>
               <small>{status === 1 ? "可供前台顯示" : "不在前台顯示"}</small></div>
           </div>
-          <section className="work-feature-placeholder"><h2>委託區域</h2><p>此區域將於後續開放</p></section>
+          <WorkFeatureEditor items={features} onChange={setFeatures} />
           <WorkMediaEditor items={media} onChange={setMedia} />
           <label className="field"><span>作品概述</span><textarea maxLength={5000} value={form.description}
             onChange={(e) => field("description", e.target.value)} placeholder="簡單介紹作品內容與你的貢獻" /></label>

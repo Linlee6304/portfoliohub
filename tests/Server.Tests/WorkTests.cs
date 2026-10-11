@@ -11,7 +11,7 @@ using Xunit;
 
 namespace PortfolioHub.Tests;
 
-public class WorkTests : IDisposable
+public partial class WorkTests : IDisposable
 {
     private readonly string database = Path.Combine(Path.GetTempPath(), "portfoliohub-work-" + Guid.NewGuid() + ".db");
     private const string Password = "WorkTest!234";
@@ -283,7 +283,7 @@ public class WorkTests : IDisposable
             var repository = new PortfolioHub.Server.Repositories.WorkRepository(db);
             var change = new Works { Title = "不可部分儲存", WorkType = 3, Status = 0, UpdatedAt = DateTime.UtcNow,
                 WorkMedia = new List<WorkMedia> { new() { MediaType = 1, MediaUrl = "https://example.test/video", CreatedAt = DateTime.UtcNow } } };
-            await Assert.ThrowsAsync<DbUpdateException>(() => repository.UpdateAsync(creatorId, original.WorkId, change, true, CancellationToken.None));
+            await Assert.ThrowsAsync<DbUpdateException>(() => repository.UpdateAsync(creatorId, original.WorkId, change, true, false, CancellationToken.None));
             db.ChangeTracker.Clear();
             await Assert.ThrowsAsync<DbUpdateException>(() => repository.CreateAsync(creatorId, change, CancellationToken.None));
         }

@@ -23,6 +23,10 @@ public class WorkColumnMappingTests
         var mediaType = db.Model.FindEntityType(typeof(WorkMedia))!.FindProperty(nameof(WorkMedia.MediaType))!;
         Assert.Equal(typeof(int), mediaType.ClrType);
         Assert.Equal("int", mediaType.GetColumnType());
+        var featureSql = db.WorkFeatures.ToQueryString();
+        Assert.Contains("[w].[Remark]", featureSql);
+        Assert.DoesNotContain("[w].[Remarks]", featureSql);
+        Assert.Equal("tinyint", db.Model.FindEntityType(typeof(WorkFeatures))!.FindProperty(nameof(WorkFeatures.Progress))!.GetColumnType());
     }
 
     [Fact]
@@ -51,6 +55,11 @@ public class WorkColumnMappingTests
                 MediaType INTEGER NOT NULL, MediaUrl TEXT NOT NULL,
                 SortOrder INTEGER NOT NULL, CreatedAt TEXT NOT NULL
             );
+            CREATE TABLE WorkFeatures (
+                FeatureId INTEGER PRIMARY KEY AUTOINCREMENT, WorkId INTEGER NOT NULL,
+                FeatureName TEXT NOT NULL, StartDate TEXT NULL, EndDate TEXT NULL,
+                Status INTEGER NOT NULL, Progress INTEGER NOT NULL, Remark TEXT NULL
+            );
             CREATE TABLE CreatorProfiles (
                 CreatorId INTEGER PRIMARY KEY,
                 IdentityUserId TEXT NOT NULL, IsActive INTEGER NOT NULL
@@ -68,7 +77,9 @@ public class WorkColumnMappingTests
         Assert.Equal(firstDate, (await repository.FindAsync(1, work.WorkId, CancellationToken.None))!.StarDate);
         var changedDate = new DateTime(2026, 9, 2);
         await repository.UpdateAsync(1, work.WorkId, new Works { Title = "更新日期", Description = "", StarDate = changedDate,
-            UpdatedAt = DateTime.UtcNow, WorkType = 1, Status = 1 }, false, CancellationToken.None);
+            UpdatedAt = DateTime.UtcNow, WorkType = 1, Status = 1,
+            WorkFeatures = new List<WorkFeatures> { new() { FeatureName = "功能", Progress = 65, Status = 2, Remarks = "製作介紹" } }
+        }, false, true, CancellationToken.None);
         db.ChangeTracker.Clear();
         Assert.Equal(changedDate, Assert.Single(await repository.ListAsync(1, CancellationToken.None)).StarDate);
         // 模擬既有資料中的 NULL 描述，API 應轉為空字串供前端表單使用。
@@ -77,5 +88,9 @@ public class WorkColumnMappingTests
         var service = new WorkService(repository);
         var result = await service.ListAsync("test-user", CancellationToken.None);
         Assert.Equal("", Assert.Single(result.Items).Description);
+        Assert.Equal("製作介紹", Assert.Single(result.Items[0].Features).Introduction);
+        await db.Database.ExecuteSqlRawAsync("UPDATE WorkFeatures SET Remark = NULL");
+        db.ChangeTracker.Clear();
+        Assert.Equal("", (await service.GetAsync("test-user", work.WorkId, CancellationToken.None)).Value!.Features[0].Introduction);
     }
 }

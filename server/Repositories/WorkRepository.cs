@@ -15,10 +15,12 @@ public class WorkRepository(AppDbContext db) : IWorkRepository
         .Where(w => w.WorksCreators.Any(c => c.CreatorId == creatorId));
 
     public Task<List<Works>> ListAsync(int creatorId, CancellationToken ct) => Mine(creatorId)
-        .AsNoTracking().Include(w => w.WorkMedia).OrderByDescending(w => w.UpdatedAt).ThenByDescending(w => w.WorkId).ToListAsync(ct);
+        .AsNoTracking().Include(w => w.WorkMedia).Include(w => w.WorkFeatures).AsSplitQuery()
+        .OrderByDescending(w => w.UpdatedAt).ThenByDescending(w => w.WorkId).ToListAsync(ct);
 
     public Task<Works?> FindAsync(int creatorId, int workId, CancellationToken ct) => Mine(creatorId)
-        .AsNoTracking().Include(w => w.WorkMedia).SingleOrDefaultAsync(w => w.WorkId == workId, ct);
+        .AsNoTracking().Include(w => w.WorkMedia).Include(w => w.WorkFeatures).AsSplitQuery()
+        .SingleOrDefaultAsync(w => w.WorkId == workId, ct);
 
     public async Task<Works> CreateAsync(int creatorId, Works work, CancellationToken ct)
     {
@@ -29,12 +31,16 @@ public class WorkRepository(AppDbContext db) : IWorkRepository
     }
 
     public async Task<WorkUpdateResult> UpdateAsync(int creatorId, int workId, Works changes,
-        bool replaceMedia, CancellationToken ct)
+        bool replaceMedia, bool replaceFeatures, CancellationToken ct)
     {
-        var work = await Mine(creatorId).Include(w => w.WorkMedia).SingleOrDefaultAsync(w => w.WorkId == workId, ct);
+        var work = await Mine(creatorId).Include(w => w.WorkMedia).Include(w => w.WorkFeatures).AsSplitQuery()
+            .SingleOrDefaultAsync(w => w.WorkId == workId, ct);
         if (work is null) return new(null);
         if (replaceMedia && changes.WorkMedia.Any(m => m.MediaId > 0 && !work.WorkMedia.Any(old => old.MediaId == m.MediaId)))
             return new(null, true);
+        // 全部歸屬檢查通過才修改追蹤實體，防止跨作品挪用功能。
+        if (replaceFeatures && changes.WorkFeatures.Any(f => f.FeatureId > 0 && !work.WorkFeatures.Any(old => old.FeatureId == f.FeatureId)))
+            return new(null, InvalidFeatures: true);
         work.Title = changes.Title;
         work.Description = changes.Description;
         // CLR 舊名稱 StarDate 已映射至資料庫 StartDate。
@@ -63,7 +69,30 @@ public class WorkRepository(AppDbContext db) : IWorkRepository
                 }
             }
         }
-        // EF 的單次 SaveChanges 交易使主表與媒體全部成功或全部回滾。
+        if (replaceFeatures)
+        {
+            foreach (var old in work.WorkFeatures.ToList())
+                if (!changes.WorkFeatures.Any(f => f.FeatureId == old.FeatureId))
+                {
+                    db.WorkFeatures.Remove(old);
+                    work.WorkFeatures.Remove(old);
+                }
+            foreach (var item in changes.WorkFeatures)
+            {
+                if (item.FeatureId == 0) work.WorkFeatures.Add(item);
+                else
+                {
+                    var old = work.WorkFeatures.Single(f => f.FeatureId == item.FeatureId);
+                    old.FeatureName = item.FeatureName;
+                    old.StartDate = item.StartDate;
+                    old.EndDate = item.EndDate;
+                    old.Status = item.Status;
+                    old.Progress = item.Progress;
+                    old.Remarks = item.Remarks;
+                }
+            }
+        }
+        // 單次 SaveChanges 交易使主表、功能與媒體全部成功或全部回滾。
         await db.SaveChangesAsync(ct);
         return new(work);
     }

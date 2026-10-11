@@ -9,7 +9,9 @@ public class WorkService(IWorkRepository repository) : IWorkService
     private static WorkDto Map(Works work) => new(work.WorkId, work.Title, work.Description ?? string.Empty,
         work.StarDate, work.EndDate, work.CreatedAt, work.UpdatedAt, work.WorkType, work.Status,
         work.WorkMedia.OrderBy(m => m.SortOrder).ThenBy(m => m.MediaId)
-            .Select(m => new WorkMediaDto(m.MediaId, m.MediaType, m.MediaUrl, m.SortOrder, m.CreatedAt)).ToList());
+            .Select(m => new WorkMediaDto(m.MediaId, m.MediaType, m.MediaUrl, m.SortOrder, m.CreatedAt)).ToList(),
+        work.WorkFeatures.OrderBy(f => f.FeatureId).Select(f => new WorkFeatureDto(f.FeatureId,
+            f.FeatureName, f.StartDate, f.EndDate, f.Status, f.Progress, f.Remarks ?? "")).ToList());
     private static WorkResult<T> Missing<T>() => new(WorkResultCode.NotFound, Message: "找不到可操作的作品");
     private static WorkResult<T> NoProfile<T>() => new(WorkResultCode.MissingProfile,
         Message: "此帳戶尚無創作者資料，請先聯繫管理員建立資料後再儲存作品。");
@@ -19,6 +21,22 @@ public class WorkService(IWorkRepository repository) : IWorkService
         if (request.Title.Length > 200 || request.Description?.Length > 5000) return "作品名稱最多 200 字，描述最多 5000 字";
         if (request.WorkType is < 1 or > 3) return "請選擇一般、接案或委託";
         if (request.Status is not (0 or 1)) return "作品狀態只能為公布或隱藏";
+        if (request.Features is { } features)
+        {
+            if (features.Count > 50) return "功能最多 50 筆";
+            if (features.Any(f => f is null || f.FeatureId < 0)) return "功能資料不正確";
+            var ids = features.Where(f => f.FeatureId > 0).Select(f => f.FeatureId).ToList();
+            if (ids.Count != ids.Distinct().Count()) return "功能編號不可重複";
+            foreach (var f in features)
+            {
+                if (string.IsNullOrWhiteSpace(f.FeatureName) || f.FeatureName.Length > 200) return "功能名稱必填，最多 200 字";
+                if (f.Introduction?.Length > 5000) return "功能介紹最多 5000 字";
+                if (f.Status is < 0 or > 4) return "請選擇有效的功能狀態";
+                if (f.Progress is < 0 or > 100) return "功能進度須為 0 至 100 的整數";
+                if (f.StartDate.HasValue && f.EndDate.HasValue && f.EndDate.Value.Date < f.StartDate.Value.Date)
+                    return "功能結束日期不可早於開始日期";
+            }
+        }
         if (request.Media is { } media)
         {
             if (media.Count > 50) return "媒體連結最多 50 筆";
@@ -45,6 +63,12 @@ public class WorkService(IWorkRepository repository) : IWorkService
         {
             MediaId = m.MediaId, MediaType = m.MediaType, MediaUrl = m.MediaUrl.Trim(),
             SortOrder = index, CreatedAt = now
+        }).ToList(),
+        WorkFeatures = (request.Features ?? []).Select(f => new WorkFeatures
+        {
+            FeatureId = f.FeatureId, FeatureName = f.FeatureName.Trim(),
+            StartDate = f.StartDate?.Date, EndDate = f.EndDate?.Date,
+            Status = f.Status, Progress = (byte)f.Progress, Remarks = f.Introduction?.Trim()
         }).ToList()
     };
 
@@ -69,6 +93,8 @@ public class WorkService(IWorkRepository repository) : IWorkService
         if (error is not null) return new(WorkResultCode.Invalid, Message: error);
         if (request.Media?.Any(m => m.MediaId != 0) == true)
             return new(WorkResultCode.Invalid, Message: "新增作品不能帶入既有媒體編號");
+        if (request.Features?.Any(f => f.FeatureId != 0) == true)
+            return new(WorkResultCode.Invalid, Message: "新增作品不能帶入既有功能編號");
         var creatorId = await repository.FindCreatorIdAsync(userId, ct);
         if (creatorId is null) return NoProfile<WorkDto>();
         var now = DateTime.UtcNow;
@@ -82,8 +108,10 @@ public class WorkService(IWorkRepository repository) : IWorkService
         if (error is not null) return new(WorkResultCode.Invalid, Message: error);
         var creatorId = await repository.FindCreatorIdAsync(userId, ct);
         if (creatorId is null) return Missing<WorkDto>();
-        var result = await repository.UpdateAsync(creatorId.Value, workId, Changes(request, DateTime.UtcNow), request.Media is not null, ct);
+        var result = await repository.UpdateAsync(creatorId.Value, workId, Changes(request, DateTime.UtcNow),
+            request.Media is not null, request.Features is not null, ct);
         if (result.InvalidMedia) return new(WorkResultCode.Invalid, Message: "媒體不屬於此作品，請重新載入後再試");
+        if (result.InvalidFeatures) return new(WorkResultCode.Invalid, Message: "功能不屬於此作品，請重新載入後再試");
         return result.Work is null ? Missing<WorkDto>() : new(WorkResultCode.Success, Map(result.Work));
     }
 
