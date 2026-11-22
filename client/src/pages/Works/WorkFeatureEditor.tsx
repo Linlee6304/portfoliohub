@@ -9,10 +9,12 @@ export function WorkFeatureEditor({ items, onChange }: {
 
   return <section className="work-features" aria-labelledby="features-heading">
     <div className="work-media-heading">
-      <h2 id="features-heading">功能區域 <small>{items.length} / 50</small></h2>
+      <h2 id="features-heading">任務區域 <small>{items.length} / 50</small></h2>
       <button type="button" className="button button-quiet" disabled={items.length >= 50}
-        onClick={() => onChange([...items, { key: crypto.randomUUID(), open: true, featureId: 0,
-          featureName: "", startDate: null, endDate: null, status: 0, progress: 0, introduction: "" }])}>＋ 新增功能</button>
+        onClick={() => onChange([...items, {
+          key: crypto.randomUUID(), open: true, featureId: 0,
+          featureName: "", startDate: null, endDate: null, status: 0, progress: 0, introduction: ""
+        }])}>＋ 新增功能</button>
     </div>
     <p className="media-help">記錄每個功能的製作日期、進度與介紹；日期可留白。</p>
     {items.length === 0 && <p className="media-empty">尚未新增功能</p>}

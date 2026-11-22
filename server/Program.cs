@@ -79,7 +79,7 @@ builder.Services.AddScoped<ICreatorScheduleRepository, CreatorScheduleRepository
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWorkService, WorkService>();
 builder.Services.AddScoped<IWorkRepository, WorkRepository>();
-
+builder.Services.AddScoped<IPublicPortfolioRepository, PublicPortfolioRepository>();
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
